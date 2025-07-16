@@ -1,8 +1,42 @@
 name: samcli-integration-test
 
 on:
-  schedule:
-    - cron: '0 0 * * *' # midnight
+  push:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/e2e-macos.yaml'
+      - '.github/workflows/e2e-windows.yaml'
+      - '.github/workflows/e2e-linux.yaml'
+      - 'contrib/packaging/**'
+      - 'deps/**'
+      - 'finch.yaml.d/**'
+      - 'winres'
+      - 'Makefile*'
+      - '.golangci.yaml'
+      - '!contrib/hello-finch/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/e2e-macos.yaml'
+      - '.github/workflows/e2e-windows.yaml'
+      - '.github/workflows/e2e-linux.yaml'
+      - 'contrib/packaging/**'
+      - 'deps/**'
+      - 'finch.yaml.d/**'
+      - 'winres'
+      - 'Makefile*'
+      - '.golangci.yaml'
+      - '!contrib/hello-finch/**'
+  # schedule:
+  #   - cron: '0 0 * * *' # midnight
   workflow_dispatch:    # manual trigger
 
 permissions:
@@ -177,7 +211,7 @@ jobs:
             exit 1
           else
             echo "All sync tests passed!"
-          fi
+          fi  
 
       - name: Run package test 
         timeout-minutes: 7
