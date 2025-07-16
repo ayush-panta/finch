@@ -35,6 +35,7 @@ on:
       - 'Makefile*'
       - '.golangci.yaml'
       - '!contrib/hello-finch/**'
+      - '.github/workflows/samcli-integration-test.yaml'
   # schedule:
   #   - cron: '0 0 * * *' # midnight
   workflow_dispatch:    # manual trigger
