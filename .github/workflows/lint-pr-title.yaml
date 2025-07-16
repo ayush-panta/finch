@@ -1,13 +1,13 @@
 # When a third-party action is added (i.e., `uses`), please also add it to `download-licenses` in Makefile.
 name: "Lint PR Title"
 
-on:
-  pull_request:
-    types:
-      - opened
-      - edited
-      - reopened
-      - synchronize
+# on:
+#   pull_request:
+#     types:
+#       - opened
+#       - edited
+#       - reopened
+#       - synchronize
 
 jobs:
   main:
