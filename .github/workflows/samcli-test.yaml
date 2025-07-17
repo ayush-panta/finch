@@ -141,16 +141,17 @@ jobs:
           make
 
           # Start finch-daemon
-          sudo ./bin/finch-daemon --debug --containerd-socket /run/containerd/containerd.sock --listen-socket /tmp/finch-daemon/finch.sock &
+          sudo ./bin/finch-daemon --debug --socket-owner $UID &
 
           # Wait for finch-daemon to be ready
           sleep 5
 
-          # Check if finch-daemon socket exists
-          ls -la /tmp/finch-daemon/finch.sock || echo "Finch-daemon socket not found"
+          # Check if finch-daemon socket exists (using default socket path)
+          SOCKET_PATH=$(./bin/finch-daemon --help 2>&1 | grep -o "/[^ ]*\.sock" | head -1 || echo "/var/run/finch-daemon.sock")
+          ls -la $SOCKET_PATH || echo "Finch-daemon socket not found"
 
           # Test if daemon is running
-          curl --unix-socket /tmp/finch-daemon/finch.sock http://localhost/_ping || (echo "Error: finch-daemon is not responding to ping" && exit 1)
+          curl --unix-socket $SOCKET_PATH http://localhost/_ping || (echo "Error: finch-daemon is not responding to ping" && exit 1)
           echo "finch-daemon is running successfully"
 
 
