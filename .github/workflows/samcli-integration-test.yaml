@@ -109,15 +109,27 @@ jobs:
         run: |
           # Install Docker Desktop
           brew install --cask docker
-          
-          # Start Docker Desktop
-          open -a Docker
-          
-          # Wait for Docker to start
-          echo "Waiting for Docker to start..."
-          sleep 30
-          
-          # Check if Docker is running
+
+          # Check if Docker is already running
+          if ! docker info &>/dev/null; then
+            echo "Docker not running, attempting to start it..."
+
+            # Try to start Docker using the CLI
+            open /Applications/Docker.app || true
+
+            # Wait for Docker to start
+            echo "Waiting for Docker to start..."
+            for i in {1..30}; do
+              if docker info &>/dev/null; then
+                echo "Docker started successfully"
+                break
+              fi
+              echo "Waiting for Docker to start... ($i/30)"
+              sleep 10
+            done
+          fi
+
+          # Final check if Docker is running
           docker info || (echo "Docker failed to start" && exit 1)
           echo "Docker is running successfully"
           
@@ -234,19 +246,6 @@ jobs:
           
           # Export the socket path for later steps
           echo "DOCKER_HOST=unix:///tmp/finch-daemon/finch.sock" >> $GITHUB_ENV
-
-      # - name: Build and initialize Finch
-      #   run: |
-      #     make
-      #     ./_output/bin/finch vm init || ./_output/bin/finch vm start
-      #     if ! ./_output/bin/finch vm status | grep -q "Running"; then
-      #       echo "Error: Finch VM is not running"
-      #       cat ~/.finch/finch.yaml
-      #       cat /Users/runner/work/finch/finch/_output/lima/data/finch/ha.stderr.log || echo "No ha.stderr.log file"
-      #       exit 1
-      #     else
-      #       echo "Finch VM is running successfully"
-      #     fi
 
       - name: Run local invoke test
         timeout-minutes: 75
