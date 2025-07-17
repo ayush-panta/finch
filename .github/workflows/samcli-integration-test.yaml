@@ -105,14 +105,33 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      - name: Set up nerdctl and containerd
+      - name: Set up containerd
         run: |
-          # Install nerdctl which includes containerd
-          brew install nerdctl
+          # Download and install containerd directly
+          CONTAINERD_VERSION="1.7.2"
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then
+            ARCH_SUFFIX="arm64"
+          else
+            ARCH_SUFFIX="amd64"
+          fi
 
-          # Start containerd
-          sudo nerdctl namespace create k8s.io
-          sudo $(brew --prefix)/bin/containerd &
+          # Download containerd
+          curl -L -o containerd.tar.gz "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-darwin-${ARCH_SUFFIX}.tar.gz"
+
+          # Extract to a local directory
+          mkdir -p containerd-extracted
+          tar -xzf containerd.tar.gz -C containerd-extracted
+
+          # Create necessary directories
+          sudo mkdir -p /usr/local/bin
+          sudo mkdir -p /var/run/containerd
+
+          # Copy binaries to /usr/local/bin
+          sudo cp containerd-extracted/bin/* /usr/local/bin/
+
+          # Start containerd in background
+          sudo /usr/local/bin/containerd &
 
           # Wait for containerd to be ready
           sleep 5
@@ -121,7 +140,7 @@ jobs:
           ps aux | grep containerd
 
           # Verify socket exists
-          ls -la /run/containerd/containerd.sock || ls -la /var/run/containerd/containerd.sock || ls -la $(brew --prefix)/var/run/containerd/containerd.sock
+          ls -la /var/run/containerd/containerd.sock || echo "Socket not found at expected location"
 
       - name: Build and run finch-daemon
         run: |
