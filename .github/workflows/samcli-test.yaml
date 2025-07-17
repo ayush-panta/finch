@@ -149,6 +149,9 @@ jobs:
           curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
           echo "finch-daemon is running successfully"
 
+          # Set DOCKER_HOST to use the finch-daemon socket
+          echo "DOCKER_HOST=unix:///run/finch.sock" >> $GITHUB_ENV
+
       - name: Run local invoke test
         timeout-minutes: 75
         working-directory: aws-sam-cli
