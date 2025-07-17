@@ -106,17 +106,24 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
+      - name: Configure Finch to use QEMU
+        run: |
+          mkdir -p ~/.finch
+          echo "vmType: \"qemu\"" > ~/.finch/finch.yaml
+
       - name: Build and initialize Finch
         run: |
           make
-          # Use the correct path to the finch binary
           ./_output/bin/finch vm init || ./_output/bin/finch vm start
           if ! ./_output/bin/finch vm status | grep -q "Running"; then
             echo "Error: Finch VM is not running"
+            cat ~/.finch/finch.yaml
+            cat /Users/runner/work/finch/finch/_output/lima/data/finch/ha.stderr.log || echo "No ha.stderr.log file"
             exit 1
           else
             echo "Finch VM is running successfully"
           fi
+
 
       - name: Run local invoke test
         timeout-minutes: 75
