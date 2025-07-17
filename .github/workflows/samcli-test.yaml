@@ -149,13 +149,11 @@ jobs:
           curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
           echo "finch-daemon is running successfully"
 
-          # Set DOCKER_HOST to use the finch-daemon socket
-          echo "DOCKER_HOST=unix:///run/finch.sock" >> $GITHUB_ENV
-
       - name: Run local invoke test
         timeout-minutes: 75
         working-directory: aws-sam-cli
         run: |
+          export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the test, display output
           python -m pytest tests/integration/local/invoke -k 'not Terraform' -v > test_output.txt 2>&1 || true
@@ -192,6 +190,7 @@ jobs:
         timeout-minutes: 30
         working-directory: aws-sam-cli
         run: |
+          export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
           python -m pytest tests/integration/local/start_lambda -k 'not Terraform' -v > start_lambda_output.txt 2>&1 || true
@@ -209,6 +208,7 @@ jobs:
         timeout-minutes: 75
         working-directory: aws-sam-cli
         run: |
+          export DOCKER_HOST=unix:///run/finch.sock        
 
           # Increase file limit to prevent "too many files open" error
           ulimit -n 4096 || true
