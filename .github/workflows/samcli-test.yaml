@@ -110,62 +110,82 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      - name: Set up containerd and nerdctl
+      - name: Setup finch-daemon
         run: |
-          # Install dependencies
-          sudo apt-get update
-          sudo apt-get install -y curl wget git make iptables ca-certificates
-
-          # Install containerd
-          wget https://github.com/containerd/containerd/releases/download/v1.7.2/containerd-1.7.2-linux-amd64.tar.gz
-          sudo tar -xzf containerd-1.7.2-linux-amd64.tar.gz -C /usr/local
-          rm containerd-1.7.2-linux-amd64.tar.gz
-
-          # Install nerdctl if needed
-          if ! command -v nerdctl &> /dev/null; then
-            NERDCTL_VERSION=1.6.2
-            wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
-            sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
-            sudo chmod +x /usr/local/bin/nerdctl
-          fi
-
-          # Set up containerd configuration
-          sudo mkdir -p /etc/containerd
-          sudo containerd config default > /tmp/config.toml
-          sudo mv /tmp/config.toml /etc/containerd/config.toml
-
-          # Start and verify containerd is running
-          sudo containerd &
-          sleep 5
-          ls -la /run/containerd/containerd.sock || (echo "Containerd socket not found" && exit 1)
-          echo "Containerd is running successfully"
-
-      - name: Set up finch-daemon
-        run: |
-          # Create socket directory
+          # Create necessary directories if they don't exist
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
 
-          # Clone and build finch-daemon
-          git clone https://github.com/runfinch/finch-daemon.git
-          cd finch-daemon
-          make
-
-          # Start finch-daemon
-          sudo ./bin/finch-daemon --debug &
-
-          # Wait for finch-daemon to be ready
+          # Start containerd if it's not already running
+          sudo containerd &
           sleep 5
 
-          # Check if finch-daemon socket exists
-          ls -la /run/finch.sock /run/finch-credential.sock || echo "Finch-daemon socket not found"
+          # Start the finch-daemon that was built as part of Finch
+          sudo ./bin/finch-daemon --debug &
+          sleep 5
 
           # Fix socket permissions if needed
           sudo chmod 666 /run/finch.sock /run/finch-credential.sock
 
-          # Test if daemon is running with the correct API endpoint
-          curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
-          echo "finch-daemon is running successfully"
+          # Verify the daemon is running
+          curl --unix-socket /run/finch.sock http://localhost/v1/version
+
+      # - name: Set up containerd and nerdctl
+      #   run: |
+      #     # Install dependencies
+      #     sudo apt-get update
+      #     sudo apt-get install -y curl wget git make iptables ca-certificates
+
+      #     # Install containerd
+      #     wget https://github.com/containerd/containerd/releases/download/v1.7.2/containerd-1.7.2-linux-amd64.tar.gz
+      #     sudo tar -xzf containerd-1.7.2-linux-amd64.tar.gz -C /usr/local
+      #     rm containerd-1.7.2-linux-amd64.tar.gz
+
+      #     # Install nerdctl if needed
+      #     if ! command -v nerdctl &> /dev/null; then
+      #       NERDCTL_VERSION=1.6.2
+      #       wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+      #       sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+      #       sudo chmod +x /usr/local/bin/nerdctl
+      #     fi
+
+      #     # Set up containerd configuration
+      #     sudo mkdir -p /etc/containerd
+      #     sudo containerd config default > /tmp/config.toml
+      #     sudo mv /tmp/config.toml /etc/containerd/config.toml
+
+      #     # Start and verify containerd is running
+      #     sudo containerd &
+      #     sleep 5
+      #     ls -la /run/containerd/containerd.sock || (echo "Containerd socket not found" && exit 1)
+      #     echo "Containerd is running successfully"
+
+      # - name: Set up finch-daemon
+      #   run: |
+      #     # Create socket directory
+      #     sudo mkdir -p /tmp/finch-daemon
+      #     sudo chmod 777 /tmp/finch-daemon
+
+      #     # Clone and build finch-daemon
+      #     git clone https://github.com/runfinch/finch-daemon.git
+      #     cd finch-daemon
+      #     make
+
+      #     # Start finch-daemon
+      #     sudo ./bin/finch-daemon --debug &
+
+      #     # Wait for finch-daemon to be ready
+      #     sleep 5
+
+      #     # Check if finch-daemon socket exists
+      #     ls -la /run/finch.sock /run/finch-credential.sock || echo "Finch-daemon socket not found"
+
+      #     # Fix socket permissions if needed
+      #     sudo chmod 666 /run/finch.sock /run/finch-credential.sock
+
+      #     # Test if daemon is running with the correct API endpoint
+      #     curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
+      #     echo "finch-daemon is running successfully"
 
       - name: Run local invoke test
         timeout-minutes: 75
