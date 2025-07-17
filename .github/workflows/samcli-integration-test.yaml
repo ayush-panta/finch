@@ -52,7 +52,6 @@ jobs:
     timeout-minutes: 240 # allows 30+ min buffer
     env:
      AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-     DOCKER_HOST: unix:///Applications/Finch/lima/data/finch/sock/finch.sock
      SAM_CLI_DEV: 1
     steps:
 
@@ -106,28 +105,48 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      - name: Configure Finch to use QEMU
+      - name: Set up containerd
         run: |
-          mkdir -p ~/.finch
-          echo "vmType: \"qemu\"" > ~/.finch/finch.yaml
+          # Install containerd on the host
+          brew install containerd
 
-      - name: Build and initialize Finch
+      - name: Build and run finch-daemon
         run: |
+          # Build finch-daemon
+          cd deps/finch-core/src/finch-daemon
           make
-          ./_output/bin/finch vm init || ./_output/bin/finch vm start
-          if ! ./_output/bin/finch vm status | grep -q "Running"; then
-            echo "Error: Finch VM is not running"
-            cat ~/.finch/finch.yaml
-            cat /Users/runner/work/finch/finch/_output/lima/data/finch/ha.stderr.log || echo "No ha.stderr.log file"
-            exit 1
-          else
-            echo "Finch VM is running successfully"
-          fi
 
+          # Create socket directory
+          mkdir -p /tmp/finch-daemon
+
+          # Start finch-daemon in background
+          ./bin/finch-daemon --containerd-socket /usr/local/var/run/containerd/containerd.sock --listen-socket /tmp/finch-daemon/finch.sock &
+
+          # Wait for daemon to be ready
+          sleep 5
+
+          # Test if daemon is running
+          curl --unix-socket /tmp/finch-daemon/finch.sock http://localhost/_ping || (echo "Error: finch-daemon is not running" && exit 1)
+          echo "finch-daemon is running successfully"
+
+      # - name: Build and initialize Finch
+      #   run: |
+      #     make
+      #     ./_output/bin/finch vm init || ./_output/bin/finch vm start
+      #     if ! ./_output/bin/finch vm status | grep -q "Running"; then
+      #       echo "Error: Finch VM is not running"
+      #       cat ~/.finch/finch.yaml
+      #       cat /Users/runner/work/finch/finch/_output/lima/data/finch/ha.stderr.log || echo "No ha.stderr.log file"
+      #       exit 1
+      #     else
+      #       echo "Finch VM is running successfully"
+      #     fi
 
       - name: Run local invoke test
         timeout-minutes: 75
         working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the test, display output
@@ -164,6 +183,8 @@ jobs:
       - name: Run start-lambda test
         timeout-minutes: 30
         working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the tests
@@ -182,6 +203,8 @@ jobs:
       - name: Run start-api test
         timeout-minutes: 75
         working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Increase file limit to prevent "too many files open" error
@@ -209,6 +232,8 @@ jobs:
       - name: Run sync test
         timeout-minutes: 20
         working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the tests
@@ -226,6 +251,8 @@ jobs:
       - name: Run package test 
         timeout-minutes: 7
         working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |  
 
           # Run the tests
@@ -256,8 +283,10 @@ jobs:
           fi
 
       - name: Run deploy test
-        working-directory: aws-sam-cli
         timeout-minutes: 30
+        working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the tests
@@ -275,6 +304,8 @@ jobs:
 
       - name: Run build test
         working-directory: aws-sam-cli
+        env:
+          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |  
 
           # Run the tests
