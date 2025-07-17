@@ -105,61 +105,135 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      # - name: Set up containerd
-      #   run: |
-      #     # Download and install containerd directly
-      #     CONTAINERD_VERSION="1.7.2"
-      #     ARCH=$(uname -m)
-      #     if [ "$ARCH" = "arm64" ]; then
-      #       ARCH_SUFFIX="arm64"
-      #     else
-      #       ARCH_SUFFIX="amd64"
-      #     fi
-
-      #     # Download containerd
-      #     curl -L -o containerd.tar.gz "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-darwin-${ARCH_SUFFIX}.tar.gz"
-
-      #     # Extract to a local directory
-      #     mkdir -p containerd-extracted
-      #     tar -xzf containerd.tar.gz -C containerd-extracted
-
-      #     # Create necessary directories
-      #     sudo mkdir -p /usr/local/bin
-      #     sudo mkdir -p /var/run/containerd
-
-      #     # Copy binaries to /usr/local/bin
-      #     sudo cp containerd-extracted/bin/* /usr/local/bin/
-
-      #     # Start containerd in background
-      #     sudo /usr/local/bin/containerd &
-
-      #     # Wait for containerd to be ready
-      #     sleep 5
-
-      #     # Check if containerd is running
-      #     ps aux | grep containerd
-
-      #     # Verify socket exists
-      #     ls -la /var/run/containerd/containerd.sock || echo "Socket not found at expected location"
-
-      - name: Build and run finch-daemon
+      - name: Set up Docker and run finch-daemon in Linux container
         run: |
-          # Build finch-daemon
-          cd deps/finch-core/src/finch-daemon
-          make
-
+          # Install Docker Desktop
+          brew install --cask docker
+          
+          # Start Docker Desktop
+          open -a Docker
+          
+          # Wait for Docker to start
+          echo "Waiting for Docker to start..."
+          sleep 30
+          
+          # Check if Docker is running
+          docker info || (echo "Docker failed to start" && exit 1)
+          echo "Docker is running successfully"
+          
           # Create socket directory
           mkdir -p /tmp/finch-daemon
-
-          # Start finch-daemon in background
-          ./bin/finch-daemon --containerd-socket /usr/local/var/run/containerd/containerd.sock --listen-socket /tmp/finch-daemon/finch.sock &
-
-          # Wait for daemon to be ready
+          chmod 777 /tmp/finch-daemon
+          
+          # Create a Dockerfile for our Linux container with nerdctl, containerd, and finch-daemon
+          cat > Dockerfile.finch << 'EOF'
+          FROM ubuntu:22.04
+          
+          # Install dependencies
+          RUN apt-get update && apt-get install -y \
+              curl \
+              wget \
+              git \
+              make \
+              iptables \
+              ca-certificates \
+              && rm -rf /var/lib/apt/lists/*
+          
+          # Install Go 1.22
+          RUN wget https://go.dev/dl/go1.22.0.linux-amd64.tar.gz \
+              && tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz \
+              && rm go1.22.0.linux-amd64.tar.gz
+          ENV PATH=$PATH:/usr/local/go/bin
+          ENV GOPATH=/go
+          ENV PATH=$PATH:/go/bin
+          
+          # Install containerd
+          RUN wget https://github.com/containerd/containerd/releases/download/v1.7.2/containerd-1.7.2-linux-amd64.tar.gz \
+              && tar -xzf containerd-1.7.2-linux-amd64.tar.gz -C /usr/local \
+              && rm containerd-1.7.2-linux-amd64.tar.gz
+          
+          # Install nerdctl
+          RUN wget https://github.com/containerd/nerdctl/releases/download/v1.5.0/nerdctl-1.5.0-linux-amd64.tar.gz \
+              && tar -xzf nerdctl-1.5.0-linux-amd64.tar.gz -C /usr/local/bin \
+              && rm nerdctl-1.5.0-linux-amd64.tar.gz
+          
+          # Set up containerd configuration
+          RUN mkdir -p /etc/containerd
+          RUN containerd config default > /etc/containerd/config.toml
+          
+          # Create necessary directories
+          RUN mkdir -p /tmp/finch-daemon
+          RUN mkdir -p /run/containerd
+          
+          # Set up entrypoint script
+          COPY entrypoint.sh /entrypoint.sh
+          RUN chmod +x /entrypoint.sh
+          
+          ENTRYPOINT ["/entrypoint.sh"]
+          EOF
+          
+          # Create entrypoint script
+          cat > entrypoint.sh << 'EOF'
+          #!/bin/bash
+          set -ex
+          
+          # Start containerd in background
+          echo "Starting containerd..."
+          /usr/local/bin/containerd &
+          
+          # Wait for containerd to be ready
           sleep 5
-
+          
+          # Check if containerd socket exists
+          ls -la /run/containerd/containerd.sock || echo "Containerd socket not found at expected location"
+          
+          # Clone and build finch-daemon
+          echo "Building finch-daemon..."
+          git clone https://github.com/runfinch/finch-daemon.git
+          cd finch-daemon
+          go version
+          make
+          
+          # Start finch-daemon
+          echo "Starting finch-daemon..."
+          ./bin/finch-daemon --debug --containerd-socket /run/containerd/containerd.sock --listen-socket /tmp/finch-daemon/finch.sock &
+          
+          # Wait for finch-daemon to be ready
+          sleep 5
+          
+          # Check if finch-daemon socket exists
+          ls -la /tmp/finch-daemon/finch.sock || echo "Finch-daemon socket not found"
+          
           # Test if daemon is running
-          curl --unix-socket /tmp/finch-daemon/finch.sock http://localhost/_ping || (echo "Error: finch-daemon is not running" && exit 1)
-          echo "finch-daemon is running successfully"
+          curl --unix-socket /tmp/finch-daemon/finch.sock http://localhost/_ping || echo "Error: finch-daemon is not responding to ping"
+          
+          # Keep container running
+          echo "Setup complete, container is ready"
+          tail -f /dev/null
+          EOF
+          
+          # Build the Docker image
+          docker build -t finch-daemon-container -f Dockerfile.finch .
+          
+          # Run the container with privileged mode to allow containerd to work
+          docker run -d --name finch-daemon-container \
+            --privileged \
+            -v /tmp/finch-daemon:/tmp/finch-daemon \
+            finch-daemon-container
+          
+          # Wait for container to be ready
+          echo "Waiting for container to be ready..."
+          sleep 30
+          
+          # Show container logs for debugging
+          docker logs finch-daemon-container
+          
+          # Check if finch-daemon is running in the container
+          docker exec finch-daemon-container curl --unix-socket /tmp/finch-daemon/finch.sock http://localhost/_ping || (echo "Error: finch-daemon is not running in container" && docker logs finch-daemon-container && exit 1)
+          echo "finch-daemon is running successfully in container"
+          
+          # Export the socket path for later steps
+          echo "DOCKER_HOST=unix:///tmp/finch-daemon/finch.sock" >> $GITHUB_ENV
 
       # - name: Build and initialize Finch
       #   run: |
@@ -177,8 +251,6 @@ jobs:
       - name: Run local invoke test
         timeout-minutes: 75
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the test, display output
@@ -215,8 +287,6 @@ jobs:
       - name: Run start-lambda test
         timeout-minutes: 30
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the tests
@@ -235,8 +305,6 @@ jobs:
       - name: Run start-api test
         timeout-minutes: 75
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Increase file limit to prevent "too many files open" error
@@ -264,8 +332,6 @@ jobs:
       - name: Run sync test
         timeout-minutes: 20
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the tests
@@ -283,8 +349,6 @@ jobs:
       - name: Run package test 
         timeout-minutes: 7
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |  
 
           # Run the tests
@@ -317,8 +381,6 @@ jobs:
       - name: Run deploy test
         timeout-minutes: 30
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |
 
           # Run the tests
@@ -336,8 +398,6 @@ jobs:
 
       - name: Run build test
         working-directory: aws-sam-cli
-        env:
-          DOCKER_HOST: unix:///tmp/finch-daemon/finch.sock
         run: |  
 
           # Run the tests
