@@ -120,9 +120,21 @@ jobs:
           sudo containerd &
           sleep 5
 
-          # Start finch-daemon using the known path
-          echo "Starting finch-daemon from ./_output/finch-daemon/finch-daemon"
-          sudo ./_output/finch-daemon/finch-daemon --debug &
+          # Find the finch-daemon binary
+          echo "Searching for finch-daemon binary..."
+          DAEMON_PATH=$(find . -name "finch-daemon" -type f -executable | grep -v "\.git" | head -1)
+
+          if [ -z "$DAEMON_PATH" ]; then
+            echo "Error: finch-daemon binary not found"
+            echo "Listing directory structure to debug:"
+            find . -type d -name "_output" -o -name "bin" | xargs ls -la
+            exit 1
+          fi
+
+          echo "Found finch-daemon at: $DAEMON_PATH"
+
+          # Start finch-daemon using the found path
+          sudo $DAEMON_PATH --debug &
           sleep 5
 
           # Check if finch-daemon socket exists
