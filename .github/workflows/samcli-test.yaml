@@ -116,6 +116,16 @@ jobs:
           cd deps/finch-core/src/finch-daemon
           make
 
+          # Install nerdctl explicitly
+          NERDCTL_VERSION=1.6.2
+          wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+          sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+          sudo chmod +x /usr/local/bin/nerdctl
+
+          # Verify nerdctl is installed
+          which nerdctl
+          nerdctl --version
+
           # Create necessary directories if they don't exist
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
