@@ -105,42 +105,42 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      - name: Set up containerd
-        run: |
-          # Download and install containerd directly
-          CONTAINERD_VERSION="1.7.2"
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "arm64" ]; then
-            ARCH_SUFFIX="arm64"
-          else
-            ARCH_SUFFIX="amd64"
-          fi
+      # - name: Set up containerd
+      #   run: |
+      #     # Download and install containerd directly
+      #     CONTAINERD_VERSION="1.7.2"
+      #     ARCH=$(uname -m)
+      #     if [ "$ARCH" = "arm64" ]; then
+      #       ARCH_SUFFIX="arm64"
+      #     else
+      #       ARCH_SUFFIX="amd64"
+      #     fi
 
-          # Download containerd
-          curl -L -o containerd.tar.gz "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-darwin-${ARCH_SUFFIX}.tar.gz"
+      #     # Download containerd
+      #     curl -L -o containerd.tar.gz "https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-darwin-${ARCH_SUFFIX}.tar.gz"
 
-          # Extract to a local directory
-          mkdir -p containerd-extracted
-          tar -xzf containerd.tar.gz -C containerd-extracted
+      #     # Extract to a local directory
+      #     mkdir -p containerd-extracted
+      #     tar -xzf containerd.tar.gz -C containerd-extracted
 
-          # Create necessary directories
-          sudo mkdir -p /usr/local/bin
-          sudo mkdir -p /var/run/containerd
+      #     # Create necessary directories
+      #     sudo mkdir -p /usr/local/bin
+      #     sudo mkdir -p /var/run/containerd
 
-          # Copy binaries to /usr/local/bin
-          sudo cp containerd-extracted/bin/* /usr/local/bin/
+      #     # Copy binaries to /usr/local/bin
+      #     sudo cp containerd-extracted/bin/* /usr/local/bin/
 
-          # Start containerd in background
-          sudo /usr/local/bin/containerd &
+      #     # Start containerd in background
+      #     sudo /usr/local/bin/containerd &
 
-          # Wait for containerd to be ready
-          sleep 5
+      #     # Wait for containerd to be ready
+      #     sleep 5
 
-          # Check if containerd is running
-          ps aux | grep containerd
+      #     # Check if containerd is running
+      #     ps aux | grep containerd
 
-          # Verify socket exists
-          ls -la /var/run/containerd/containerd.sock || echo "Socket not found at expected location"
+      #     # Verify socket exists
+      #     ls -la /var/run/containerd/containerd.sock || echo "Socket not found at expected location"
 
       - name: Build and run finch-daemon
         run: |
