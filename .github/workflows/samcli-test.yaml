@@ -135,6 +135,13 @@ jobs:
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
 
+          # Install nerdctl
+          NERDCTL_VERSION=1.6.2  # Use the latest stable version
+          wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+          sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+          sudo chmod +x /usr/local/bin/nerdctl
+          nerdctl --version  # Verify installation
+
           # Clone and build finch-daemon
           git clone https://github.com/runfinch/finch-daemon.git
           cd finch-daemon
@@ -146,12 +153,11 @@ jobs:
           # Wait for finch-daemon to be ready
           sleep 5
 
-          # Check if finch-daemon socket exists (using default socket path)
-          SOCKET_PATH=$(./bin/finch-daemon --help 2>&1 | grep -o "/[^ ]*\.sock" | head -1 || echo "/var/run/finch-daemon.sock")
-          ls -la $SOCKET_PATH || echo "Finch-daemon socket not found"
+          # Check if finch-daemon socket exists
+          ls -la /run/finch-credential.sock || echo "Finch-daemon socket not found"
 
           # Test if daemon is running
-          curl --unix-socket $SOCKET_PATH http://localhost/_ping || (echo "Error: finch-daemon is not responding to ping" && exit 1)
+          curl --unix-socket /run/finch-credential.sock http://localhost/_ping || (echo "Error: finch-daemon is not responding to ping" && exit 1)
           echo "finch-daemon is running successfully"
 
 
