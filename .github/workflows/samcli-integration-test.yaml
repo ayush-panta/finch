@@ -105,10 +105,23 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      - name: Set up containerd
+      - name: Set up nerdctl and containerd
         run: |
-          # Install containerd on the host
-          brew install containerd
+          # Install nerdctl which includes containerd
+          brew install nerdctl
+
+          # Start containerd
+          sudo nerdctl namespace create k8s.io
+          sudo $(brew --prefix)/bin/containerd &
+
+          # Wait for containerd to be ready
+          sleep 5
+
+          # Check if containerd is running
+          ps aux | grep containerd
+
+          # Verify socket exists
+          ls -la /run/containerd/containerd.sock || ls -la /var/run/containerd/containerd.sock || ls -la $(brew --prefix)/var/run/containerd/containerd.sock
 
       - name: Build and run finch-daemon
         run: |
