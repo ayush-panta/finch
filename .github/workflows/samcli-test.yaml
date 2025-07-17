@@ -75,40 +75,40 @@ jobs:
         run: |
           make
 
-      # - name: Set up SAM CLI from source
-      #   run: |
-      #     python -m pip install --upgrade pip
-      #     git clone https://github.com/aws/aws-sam-cli.git
-      #     cd aws-sam-cli
-      #     git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
-      #     git submodule update --init --recursive
-      #     make init
-      #     which samdev
-      #     samdev --version
+      - name: Set up SAM CLI from source
+        run: |
+          python -m pip install --upgrade pip
+          git clone https://github.com/aws/aws-sam-cli.git
+          cd aws-sam-cli
+          git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
+          git submodule update --init --recursive
+          make init
+          which samdev
+          samdev --version
 
-      # - name: Run unit tests
-      #   working-directory: aws-sam-cli  
-      #   run: |
+      - name: Run unit tests
+        working-directory: aws-sam-cli  
+        run: |
 
-      #     # Run the unit tests and capture output
-      #     make test | tee unit_test_output.txt
+          # Run the unit tests and capture output
+          make test | tee unit_test_output.txt
 
-      #     # # Check if tests passed
-      #     # if ! grep -q "failed=0" unit_test_output.txt; then
-      #     #   echo "Unit tests failed!"
-      #     #   exit 1
-      #     # fi
+          # # Check if tests passed
+          # if ! grep -q "failed=0" unit_test_output.txt; then
+          #   echo "Unit tests failed!"
+          #   exit 1
+          # fi
 
-      #     # Extract coverage percentage
-      #     COVERAGE=$(grep -o "[0-9]\+%" unit_test_output.txt | head -1 | tr -d '%')
+          # Extract coverage percentage
+          COVERAGE=$(grep -o "[0-9]\+%" unit_test_output.txt | head -1 | tr -d '%')
 
-      #     # Check if coverage is at least 90% (allowing for some variation from the ~94%)
-      #     if [ -z "$COVERAGE" ] || [ "$COVERAGE" -lt 90 ]; then
-      #       echo "Coverage is below expected threshold! Got: $COVERAGE%, Expected: ~94%"
-      #       exit 1
-      #     else
-      #       echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
-      #     fi
+          # Check if coverage is at least 90% (allowing for some variation from the ~94%)
+          if [ -z "$COVERAGE" ] || [ "$COVERAGE" -lt 90 ]; then
+            echo "Coverage is below expected threshold! Got: $COVERAGE%, Expected: ~94%"
+            exit 1
+          else
+            echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
+          fi
 
       - name: Setup finch-daemon
         run: |
