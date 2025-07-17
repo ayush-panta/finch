@@ -112,6 +112,9 @@ jobs:
 
       - name: Setup finch-daemon
         run: |
+          # Find where finch-daemon is located
+          find . -name "finch-daemon" -type f -executable
+
           # Create necessary directories if they don't exist
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
@@ -120,15 +123,25 @@ jobs:
           sudo containerd &
           sleep 5
 
-          # Start the finch-daemon that was built as part of Finch
-          sudo ./bin/finch-daemon --debug &
+          # Use the correct path to finch-daemon (adjust based on find results)
+          DAEMON_PATH=$(find . -name "finch-daemon" -type f -executable | head -1)
+          if [ -z "$DAEMON_PATH" ]; then
+            echo "Error: finch-daemon binary not found"
+            exit 1
+          fi
+
+          echo "Found finch-daemon at: $DAEMON_PATH"
+          sudo $DAEMON_PATH --debug &
           sleep 5
 
+          # Check if finch-daemon socket exists
+          ls -la /run/finch.sock /run/finch-credential.sock || echo "Finch-daemon socket not found"
+
           # Fix socket permissions if needed
-          sudo chmod 666 /run/finch.sock /run/finch-credential.sock
+          sudo chmod 666 /run/finch.sock /run/finch-credential.sock 2>/dev/null || true
 
           # Verify the daemon is running
-          curl --unix-socket /run/finch.sock http://localhost/v1/version
+          curl --unix-socket /run/finch.sock http://localhost/v1/version || echo "Error: finch-daemon is not responding"
 
       # - name: Set up containerd and nerdctl
       #   run: |
