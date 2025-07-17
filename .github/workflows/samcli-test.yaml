@@ -71,6 +71,10 @@ jobs:
         with:
           go-version: '1.21 ' # not sure what to put here (recent Go)
 
+      - name: Make Finch
+        run: |
+          make
+
       - name: Set up SAM CLI from source
         run: |
           python -m pip install --upgrade pip
@@ -106,7 +110,7 @@ jobs:
             echo "Unit tests passed with $COVERAGE% coverage (expected ~94%)"
           fi
 
-      - name: Set up containerd
+      - name: Set up containerd and nerdctl
         run: |
           # Install dependencies
           sudo apt-get update
@@ -116,6 +120,14 @@ jobs:
           wget https://github.com/containerd/containerd/releases/download/v1.7.2/containerd-1.7.2-linux-amd64.tar.gz
           sudo tar -xzf containerd-1.7.2-linux-amd64.tar.gz -C /usr/local
           rm containerd-1.7.2-linux-amd64.tar.gz
+
+          # Install nerdctl if needed
+          if ! command -v nerdctl &> /dev/null; then
+            NERDCTL_VERSION=1.6.2
+            wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+            sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+            sudo chmod +x /usr/local/bin/nerdctl
+          fi
 
           # Set up containerd configuration
           sudo mkdir -p /etc/containerd
@@ -128,20 +140,11 @@ jobs:
           ls -la /run/containerd/containerd.sock || (echo "Containerd socket not found" && exit 1)
           echo "Containerd is running successfully"
 
-
       - name: Set up finch-daemon
         run: |
           # Create socket directory
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
-
-          # Install nerdctl if needed
-          if ! command -v nerdctl &> /dev/null; then
-            NERDCTL_VERSION=1.6.2
-            wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
-            sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
-            sudo chmod +x /usr/local/bin/nerdctl
-          fi
 
           # Clone and build finch-daemon
           git clone https://github.com/runfinch/finch-daemon.git
@@ -163,7 +166,6 @@ jobs:
           # Test if daemon is running with the correct API endpoint
           curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
           echo "finch-daemon is running successfully"
-
 
       - name: Run local invoke test
         timeout-minutes: 75
