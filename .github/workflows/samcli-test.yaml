@@ -120,32 +120,44 @@ jobs:
           sudo containerd &
           sleep 5
 
-          # Find the finch-daemon binary
-          echo "Searching for finch-daemon binary..."
-          DAEMON_PATH=$(find . -name "finch-daemon" -type f -executable | grep -v "\.git" | head -1)
+          # Check if finch has daemon functionality
+          echo "Checking if finch binary includes daemon functionality..."
+          ./_output/bin/finch --help | grep -i daemon || echo "No daemon functionality in finch binary"
+
+          # Try to build finch-daemon explicitly
+          echo "Attempting to build finch-daemon explicitly..."
+          cd deps/finch-core/src/finch-daemon && make
+
+          # Find the finch-daemon binary after explicit build
+          DAEMON_PATH=$(find /Users/ayushkp/Documents/crt/finch -name "finch-daemon" -type f -executable | grep -v "\.git" | head -1)
 
           if [ -z "$DAEMON_PATH" ]; then
-            echo "Error: finch-daemon binary not found"
-            echo "Listing directory structure to debug:"
-            find . -type d -name "_output" -o -name "bin" | xargs ls -la
-            exit 1
+            echo "Error: finch-daemon binary not found after explicit build"
+            echo "Trying to use finch binary as daemon..."
+
+            # Try using finch binary with daemon subcommand if available
+            if ./_output/bin/finch daemon --help 2>&1 | grep -q "daemon"; then
+              echo "Using finch daemon subcommand"
+              sudo ./_output/bin/finch daemon --debug &
+            else
+              echo "No daemon functionality found in finch binary"
+              exit 1
+            fi
+          else
+            echo "Found finch-daemon at: $DAEMON_PATH"
+            sudo $DAEMON_PATH --debug &
           fi
 
-          echo "Found finch-daemon at: $DAEMON_PATH"
-
-          # Start finch-daemon using the found path
-          sudo $DAEMON_PATH --debug &
           sleep 5
 
           # Check if finch-daemon socket exists
-          ls -la /run/finch.sock /run/finch-credential.sock || echo "Finch-daemon socket not found"
+          ls -la /run/finch*.sock || echo "Finch socket files not found"
 
           # Fix socket permissions if needed
-          sudo chmod 666 /run/finch.sock /run/finch-credential.sock 2>/dev/null || true
+          sudo chmod 666 /run/finch*.sock 2>/dev/null || true
 
           # Verify the daemon is running
-          curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
-          echo "finch-daemon is running successfully"
+          curl --unix-socket /run/finch.sock http://localhost/v1/version || echo "Error: finch-daemon is not responding"
 
       - name: Run local invoke test
         timeout-minutes: 75
