@@ -53,6 +53,7 @@ jobs:
     env:
       AWS_DEFAULT_REGION: ${{ secrets.REGION }}
       SAM_CLI_DEV: 1
+      BY_CANARY: true
     steps:
 
       # finch-daemon is part of the core
@@ -131,7 +132,7 @@ jobs:
           sudo chmod 777 /tmp/finch-daemon
 
           # Start containerd if it's not already running
-          sudo containerd &
+          sudo containerd & 
           sleep 5
 
           # Start finch-daemon using the binary we just built
