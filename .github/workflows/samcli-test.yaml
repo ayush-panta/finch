@@ -39,7 +39,7 @@ on:
       - '.github/workflows/samcli-test.yaml'
   # schedule:
   #   - cron: '0 9 * * *' # midnight
-  # workflow_dispatch:    # manual trigger
+  workflow_dispatch:    # manual trigger
 
 permissions:
   # This is required for configure-aws-credentials to request an OIDC JWT ID token to access AWS resources later on.
