@@ -127,6 +127,19 @@ jobs:
           which nerdctl
           nerdctl --version
 
+          # Install BuildKit
+          BUILDKIT_VERSION=0.12.0
+          wget https://github.com/moby/buildkit/releases/download/v${BUILDKIT_VERSION}/buildkit-v${BUILDKIT_VERSION}.linux-amd64.tar.gz
+          sudo tar -xzf buildkit-v${BUILDKIT_VERSION}.linux-amd64.tar.gz -C /usr/local
+          sudo ln -sf /usr/local/bin/buildctl /usr/bin/buildctl
+          sudo ln -sf /usr/local/bin/buildkitd /usr/bin/buildkitd
+
+          # Start BuildKit daemon
+          sudo mkdir -p /run/buildkit-finch
+          sudo buildkitd --addr unix:///run/buildkit-finch/buildkitd.sock --root /var/lib/buildkit-finch &
+          sleep 5
+          sudo chmod 666 /run/buildkit-finch/buildkitd.sock
+
           # Create necessary directories if they don't exist
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
