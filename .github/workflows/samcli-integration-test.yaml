@@ -109,8 +109,9 @@ jobs:
       - name: Build and initialize Finch
         run: |
           make
-          ./bin/finch vm init || ./bin/finch vm start
-          if ! ./bin/finch vm status | grep -q "Running"; then
+          # Use the correct path to the finch binary
+          ./_output/bin/finch vm init || ./_output/bin/finch vm start
+          if ! ./_output/bin/finch vm status | grep -q "Running"; then
             echo "Error: Finch VM is not running"
             exit 1
           else
