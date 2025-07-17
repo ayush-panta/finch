@@ -135,12 +135,13 @@ jobs:
           sudo mkdir -p /tmp/finch-daemon
           sudo chmod 777 /tmp/finch-daemon
 
-          # Install nerdctl
-          NERDCTL_VERSION=1.6.2  # Use the latest stable version
-          wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
-          sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
-          sudo chmod +x /usr/local/bin/nerdctl
-          nerdctl --version  # Verify installation
+          # Install nerdctl if needed
+          if ! command -v nerdctl &> /dev/null; then
+            NERDCTL_VERSION=1.6.2
+            wget https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz
+            sudo tar -xzf nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+            sudo chmod +x /usr/local/bin/nerdctl
+          fi
 
           # Clone and build finch-daemon
           git clone https://github.com/runfinch/finch-daemon.git
@@ -148,16 +149,19 @@ jobs:
           make
 
           # Start finch-daemon
-          sudo ./bin/finch-daemon --debug --socket-owner $UID &
+          sudo ./bin/finch-daemon --debug &
 
           # Wait for finch-daemon to be ready
           sleep 5
 
           # Check if finch-daemon socket exists
-          ls -la /run/finch-credential.sock || echo "Finch-daemon socket not found"
+          ls -la /run/finch.sock /run/finch-credential.sock || echo "Finch-daemon socket not found"
 
-          # Test if daemon is running
-          curl --unix-socket /run/finch-credential.sock http://localhost/_ping || (echo "Error: finch-daemon is not responding to ping" && exit 1)
+          # Fix socket permissions if needed
+          sudo chmod 666 /run/finch.sock /run/finch-credential.sock
+
+          # Test if daemon is running with the correct API endpoint
+          curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
           echo "finch-daemon is running successfully"
 
 
