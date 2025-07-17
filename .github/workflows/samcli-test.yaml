@@ -46,13 +46,13 @@ permissions:
   # More info: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
   id-token: write
   contents: read    # This is required for actions/checkout
-  jobs:
-    samcli-test:
-      runs-on: ubuntu-latest
-      timeout-minutes: 250 # allows 30+ min buffer
-      env:
-        AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-        SAM_CLI_DEV: 1
+jobs:
+  samcli-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 250 # allows 30+ min buffer
+    env:
+      AWS_DEFAULT_REGION: ${{ secrets.REGION }}
+      SAM_CLI_DEV: 1
     steps:
 
       # finch-daemon is part of the core
