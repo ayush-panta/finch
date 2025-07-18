@@ -165,7 +165,7 @@ jobs:
           sudo buildkitd &
 
           sleep 2
-          
+
       - name: Setup finch-daemon
         run: |
           # Navigate to finch-daemon directory and build it
@@ -189,7 +189,7 @@ jobs:
           sudo chmod 666 /run/containerd/containerd.sock 2>/dev/null || true
 
           # Verify the daemon is running
-          curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
+          curl --unix-socket /run/finch.sock http://localhost/v1.35/version || (echo "Error: finch-daemon is not responding" && exit 1)
           curl --unix-socket /run/finch.sock http://localhost/_ping || (echo "Error: finch-daemon ping failed" && exit 1)
           echo "finch-daemon is running successfully"
 
@@ -241,20 +241,20 @@ jobs:
           echo '{"auths":{"docker.io":{},"public.ecr.aws":{}}}' > ~/.docker/config.json
 
           # Test pulling a small image to verify registry access
-          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/images/create?fromImage=hello-world:latest"
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1.35/images/create?fromImage=hello-world:latest"
 
           # Verify the image was pulled
-          curl --unix-socket /run/finch.sock "http://localhost/v1/images/json" | grep hello-world
+          curl --unix-socket /run/finch.sock "http://localhost/v1.35/images/json" | grep hello-world
 
           # Configure AWS ECR credentials
           aws ecr-public get-login-password --region us-east-1 | \
-          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/auth" \
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1.35/auth" \
           -H "Content-Type: application/json" \
           -d '{"username":"AWS","password":"'$(aws ecr-public get-login-password --region us-east-1)'","serveraddress":"public.ecr.aws"}'
 
           # Pre-pull Lambda base images that will be needed
-          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/images/create?fromImage=public.ecr.aws/lambda/python:3.6"
-          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/images/create?fromImage=public.ecr.aws/lambda/python:3.9"
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1.35/images/create?fromImage=public.ecr.aws/lambda/python:3.6"
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1.35/images/create?fromImage=public.ecr.aws/lambda/python:3.9"
 
           echo "Container registry configuration complete"
 
