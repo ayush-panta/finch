@@ -166,15 +166,77 @@ jobs:
 
           sleep 2
 
+      - name: Configure container registry access
+        run: |
+          # Create containerd configuration directory
+          sudo mkdir -p /etc/containerd
+
+          # Create a basic containerd config
+          cat > /tmp/config.toml << EOF
+          version = 2
+
+          [plugins."io.containerd.grpc.v1.cri"]
+            sandbox_image = "registry.k8s.io/pause:3.6"
+            [plugins."io.containerd.grpc.v1.cri".registry]
+              [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+                [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+                  endpoint = ["https://registry-1.docker.io"]
+                [plugins."io.containerd.grpc.v1.cri".registry.mirrors."public.ecr.aws"]
+                  endpoint = ["https://public.ecr.aws"]
+
+          [plugins."io.containerd.internal.v1.opt"]
+            path = "/opt/containerd"
+          EOF
+
+          sudo mv /tmp/config.toml /etc/containerd/config.toml
+
+          # Restart containerd with the new config
+          sudo pkill containerd || true
+          sleep 2
+          sudo containerd --config /etc/containerd/config.toml &
+          sleep 5
+
+          # Create Docker config directory for credentials
+          mkdir -p ~/.docker
+
+          # Create a basic Docker config with empty auth (allows anonymous pulls)
+          echo '{"auths":{"docker.io":{},"public.ecr.aws":{}}}' > ~/.docker/config.json
+
+          # Test pulling a small image to verify registry access
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/images/create?fromImage=hello-world:latest"
+
+          # Verify the image was pulled
+          curl --unix-socket /run/finch.sock "http://localhost/v1/images/json" | grep hello-world
+
+          # Configure AWS ECR credentials
+          aws ecr-public get-login-password --region us-east-1 | \
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/auth" \
+          -H "Content-Type: application/json" \
+          -d '{"username":"AWS","password":"'$(aws ecr-public get-login-password --region us-east-1)'","serveraddress":"public.ecr.aws"}'
+
+          # Pre-pull Lambda base images that will be needed
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/images/create?fromImage=public.ecr.aws/lambda/python:3.6"
+          curl --unix-socket /run/finch.sock -X POST "http://localhost/v1/images/create?fromImage=public.ecr.aws/lambda/python:3.9"
+
+          echo "Container registry configuration complete"
+
       - name: Setup finch-daemon
         run: |
           # Navigate to finch-daemon directory and build it
           cd deps/finch-core/src/finch-daemon
           make
 
-          # Start finch-daemon using the binary we just built
+          # Create data directory
+          sudo mkdir -p /var/lib/finch-daemon
+          sudo chmod 777 /var/lib/finch-daemon
+
+          # Start finch-daemon using the binary we just built with more options
           echo "Starting finch-daemon from bin/finch-daemon"
-          sudo ./bin/finch-daemon --debug &
+          sudo ./bin/finch-daemon \
+            --debug \
+            --containerd-socket /run/containerd/containerd.sock \
+            --data-root /var/lib/finch-daemon \
+            &
           sleep 5
 
           # Check if finch-daemon socket exists
@@ -182,9 +244,11 @@ jobs:
 
           # Fix socket permissions if needed
           sudo chmod 666 /run/finch.sock /run/finch-credential.sock 2>/dev/null || true
+          sudo chmod 666 /run/containerd/containerd.sock 2>/dev/null || true
 
           # Verify the daemon is running
           curl --unix-socket /run/finch.sock http://localhost/v1/version || (echo "Error: finch-daemon is not responding" && exit 1)
+          curl --unix-socket /run/finch.sock http://localhost/_ping || (echo "Error: finch-daemon ping failed" && exit 1)
           echo "finch-daemon is running successfully"
 
       - name: Run local invoke test
