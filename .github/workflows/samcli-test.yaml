@@ -237,8 +237,17 @@ jobs:
           # Create Docker config directory for credentials
           mkdir -p ~/.docker
 
+          # Create Finch config directory
+          mkdir -p ~/.finch
+
           # Create a basic Docker config with empty auth (allows anonymous pulls)
           echo '{"auths":{"docker.io":{},"public.ecr.aws":{}}}' > ~/.docker/config.json
+
+          # Copy the same config to Finch directory
+          cp ~/.docker/config.json ~/.finch/config.json
+
+          # Set DOCKER_CONFIG environment variable
+          echo "DOCKER_CONFIG=$HOME/.finch" >> $GITHUB_ENV
 
           # Test pulling a small image to verify registry access
           curl --unix-socket /run/finch.sock -X POST "http://localhost/v1.35/images/create?fromImage=hello-world:latest"
@@ -258,47 +267,49 @@ jobs:
 
           echo "Container registry configuration complete"
 
-      # - name: Run local invoke test
-      #   timeout-minutes: 75
-      #   working-directory: aws-sam-cli
-      #   run: |
-      #     export DOCKER_HOST=unix:///run/finch.sock
+      - name: Run local invoke test
+        timeout-minutes: 75
+        working-directory: aws-sam-cli
+        run: |
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_HOST=unix:///run/finch.sock
 
-      #     # Run the test, display output
-      #     python -m pytest tests/integration/local/invoke -k 'not Terraform' -v > test_output.txt 2>&1 || true
-      #     cat test_output.txt
+          # Run the test, display output
+          python -m pytest tests/integration/local/invoke -k 'not Terraform' -v > test_output.txt 2>&1 || true
+          cat test_output.txt
 
-      #     # Create a list of expected failing tests
-      #     cat > expected_failures.txt << 'EOF'
-      #     test_invoke_with_error_during_image_build
-      #     test_invoke_with_timeout_set_0_TimeoutFunction
-      #     test_invoke_with_timeout_set_1_TimeoutFunctionWithParameter
-      #     test_invoke_with_timeout_set_2_TimeoutFunctionWithStringParameter
-      #     test_building_new_rapid_image_removes_old_rapid_images
-      #     test_invoke_returns_expected_results_from_git_function
-      #     test_invoke_returns_expected_results_from_git_function_with_parameters
-      #     EOF
+          # Create a list of expected failing tests
+          cat > expected_failures.txt << 'EOF'
+          test_invoke_with_error_during_image_build
+          test_invoke_with_timeout_set_0_TimeoutFunction
+          test_invoke_with_timeout_set_1_TimeoutFunctionWithParameter
+          test_invoke_with_timeout_set_2_TimeoutFunctionWithStringParameter
+          test_building_new_rapid_image_removes_old_rapid_images
+          test_invoke_returns_expected_results_from_git_function
+          test_invoke_returns_expected_results_from_git_function_with_parameters
+          EOF
 
-      #     # Extract actual failing tests
-      #     grep "FAILED" test_output.txt | sed 's/.*::\(test_[a-zA-Z0-9_]*\).*/\1/' > actual_failures.txt
+          # Extract actual failing tests
+          grep "FAILED" test_output.txt | sed 's/.*::\(test_[a-zA-Z0-9_]*\).*/\1/' > actual_failures.txt
 
-      #     # Find unexpected failures (failures not in the expected list)
-      #     UNEXPECTED_FAILURES=$(grep -v -f expected_failures.txt actual_failures.txt || true)
+          # Find unexpected failures (failures not in the expected list)
+          UNEXPECTED_FAILURES=$(grep -v -f expected_failures.txt actual_failures.txt || true)
 
-      #     # Check if there are any unexpected failures
-      #     if [ -n "$UNEXPECTED_FAILURES" ]; then
-      #       echo "Unexpected test failures found:"
-      #       echo "$UNEXPECTED_FAILURES"
-      #       echo "Invoke test failed due to unexpected test failures"
-      #       exit 1
-      #     else
-      #       echo "All test failures were expected. Invoke test passed!"
-      #     fi
+          # Check if there are any unexpected failures
+          if [ -n "$UNEXPECTED_FAILURES" ]; then
+            echo "Unexpected test failures found:"
+            echo "$UNEXPECTED_FAILURES"
+            echo "Invoke test failed due to unexpected test failures"
+            exit 1
+          else
+            echo "All test failures were expected. Invoke test passed!"
+          fi
 
       - name: Run start-lambda test
         timeout-minutes: 30
         working-directory: aws-sam-cli
         run: |
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -317,7 +328,8 @@ jobs:
         timeout-minutes: 75
         working-directory: aws-sam-cli
         run: |
-          export DOCKER_HOST=unix:///run/finch.sock        
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_HOST=unix:///run/finch.sock
 
           # Increase file limit to prevent "too many files open" error
           ulimit -n 4096 || true
@@ -338,6 +350,7 @@ jobs:
         timeout-minutes: 20
         working-directory: aws-sam-cli
         run: |
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -356,6 +369,7 @@ jobs:
         timeout-minutes: 7
         working-directory: aws-sam-cli
         run: |  
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -389,6 +403,7 @@ jobs:
         timeout-minutes: 30
         working-directory: aws-sam-cli
         run: |
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -407,6 +422,7 @@ jobs:
       - name: Run build test
         working-directory: aws-sam-cli
         run: |  
+          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
