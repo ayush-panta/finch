@@ -271,7 +271,7 @@ jobs:
         timeout-minutes: 75
         working-directory: aws-sam-cli
         run: |
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the test, display output
@@ -309,7 +309,7 @@ jobs:
         timeout-minutes: 30
         working-directory: aws-sam-cli
         run: |
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -328,7 +328,7 @@ jobs:
         timeout-minutes: 75
         working-directory: aws-sam-cli
         run: |
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Increase file limit to prevent "too many files open" error
@@ -350,7 +350,7 @@ jobs:
         timeout-minutes: 20
         working-directory: aws-sam-cli
         run: |
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -369,7 +369,7 @@ jobs:
         timeout-minutes: 7
         working-directory: aws-sam-cli
         run: |  
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -403,7 +403,7 @@ jobs:
         timeout-minutes: 30
         working-directory: aws-sam-cli
         run: |
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
@@ -422,7 +422,7 @@ jobs:
       - name: Run build test
         working-directory: aws-sam-cli
         run: |  
-          export DOCKER_CONFIG= ${{ env.DOCKER_CONFIG }}
+          export DOCKER_CONFIG=${{ env.DOCKER_CONFIG }}
           export DOCKER_HOST=unix:///run/finch.sock
 
           # Run the tests
