@@ -57,3 +57,5 @@ hostResolver:
 portForwards:
 - guestSocket: "/run/finch.sock"
   hostSocket: "{{.Dir}}/sock/finch.sock"
+- guestSocket: "/run/cred.sock"
+  hostSocket: "/private/tmp/cred.sock"

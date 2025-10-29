@@ -79,7 +79,7 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+remote-all: arch-test finch finch-cred-daemon install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -168,6 +168,10 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
+
+.PHONY: finch-cred-daemon
+finch-cred-daemon:
+	$(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/finch-cred-daemon $(PACKAGE)/cmd/finch/cred-helper
 
 .PHONY: release
 release: check-licenses all download-licenses
