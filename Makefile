@@ -79,7 +79,7 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch finch-cred-daemon install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+remote-all: arch-test finch finch-cred-daemon docker-credential-helper install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -172,6 +172,23 @@ finch-all:
 .PHONY: finch-cred-daemon
 finch-cred-daemon:
 	$(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/finch-cred-daemon $(PACKAGE)/cmd/finch/cred-helper
+
+CRED_HELPER_VERSION ?= v0.9.4
+
+.PHONY: docker-credential-helper
+ifeq ($(BUILD_OS), Darwin)
+docker-credential-helper:
+	mkdir -p ~/.finch/cred-helpers
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-amd64 -o ~/.finch/cred-helpers/docker-credential-osxkeychain
+	chmod +x ~/.finch/cred-helpers/docker-credential-osxkeychain
+else ifeq ($(BUILD_OS), Windows_NT)
+docker-credential-helper:
+	mkdir -p ~/.finch/cred-helpers
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-wincred-$(CRED_HELPER_VERSION).windows-amd64.exe -o ~/.finch/cred-helpers/docker-credential-wincred.exe
+else
+docker-credential-helper:
+	@echo "No credential helper needed for Linux"
+endif
 
 .PHONY: release
 release: check-licenses all download-licenses
