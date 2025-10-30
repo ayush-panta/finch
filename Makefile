@@ -178,13 +178,25 @@ CRED_HELPER_VERSION ?= v0.9.4
 .PHONY: docker-credential-helper
 ifeq ($(BUILD_OS), Darwin)
 docker-credential-helper:
+	# Download real binary for host daemon
+	mkdir -p $(OUTDIR)/bin/cred-helpers
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-amd64 -o $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+	chmod +x $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+	# Create dummy script for VM (will be overwritten at runtime)
 	mkdir -p ~/.finch/cred-helpers
-	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-amd64 -o ~/.finch/cred-helpers/docker-credential-osxkeychain
+	echo '#!/bin/bash' > ~/.finch/cred-helpers/docker-credential-osxkeychain
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> ~/.finch/cred-helpers/docker-credential-osxkeychain
 	chmod +x ~/.finch/cred-helpers/docker-credential-osxkeychain
 else ifeq ($(BUILD_OS), Windows_NT)
 docker-credential-helper:
+	# Download real binary for host daemon
+	mkdir -p $(OUTDIR)/bin/cred-helpers
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-wincred-$(CRED_HELPER_VERSION).windows-amd64.exe -o $(OUTDIR)/bin/cred-helpers/docker-credential-wincred.exe
+	# Create dummy script for VM (will be overwritten at runtime)
 	mkdir -p ~/.finch/cred-helpers
-	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-wincred-$(CRED_HELPER_VERSION).windows-amd64.exe -o ~/.finch/cred-helpers/docker-credential-wincred.exe
+	echo '#!/bin/bash' > ~/.finch/cred-helpers/docker-credential-wincred
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> ~/.finch/cred-helpers/docker-credential-wincred
+	chmod +x ~/.finch/cred-helpers/docker-credential-wincred
 else
 docker-credential-helper:
 	@echo "No credential helper needed for Linux"
