@@ -104,8 +104,11 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		// Create VM-side bridge script
 		bridgeScript := fmt.Sprintf(`cat > "$FINCH_DIR"/cred-helpers/docker-credential-%s << 'EOF'
 #!/bin/bash
-# Forward everything to host daemon
-{ echo "$@"; cat; } | nc 192.168.5.2 8080
+exec 3<>/dev/tcp/192.168.5.2/8080
+printf "%%s\n" "$@" >&3
+cat >&3
+cat <&3
+exec 3<&-
 EOF`, credHelper)
 		cmdArr = append(cmdArr, bridgeScript)
 		cmdArr = append(cmdArr, fmt.Sprintf(`chmod +x "$FINCH_DIR"/cred-helpers/docker-credential-%s`, credHelper))
