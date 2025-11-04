@@ -95,23 +95,21 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 	}
 
 	//nolint:gosec // G101: Potential hardcoded credentials false positive
-	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
-  (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
-  ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
+	const configureCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
+echo "Creating credential helper script for %s" && \
+sudo tee /usr/local/bin/docker-credential-%s > /dev/null << 'CREDEOF'
+#!/bin/bash
+# Forward to host daemon via TCP
+stdin_data=$(cat)
+response=$(echo -e "$1\n$stdin_data" | nc host.lima.internal 8080)
+echo "$response"
+CREDEOF
+sudo chmod +x /usr/local/bin/docker-credential-%s
+)`
 
 	for _, credHelper := range fc.CredsHelpers {
 		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
-		// Create VM-side bridge script
-		bridgeScript := fmt.Sprintf(`cat > "$FINCH_DIR"/cred-helpers/docker-credential-%s << 'EOF'
-#!/bin/bash
-exec 3<>/dev/tcp/192.168.5.2/8080
-printf "%%s\n" "$@" >&3
-cat >&3
-cat <&3
-exec 3<&-
-EOF`, credHelper)
-		cmdArr = append(cmdArr, bridgeScript)
-		cmdArr = append(cmdArr, fmt.Sprintf(`chmod +x "$FINCH_DIR"/cred-helpers/docker-credential-%s`, credHelper))
+		// Create VM-side bridge script that forwards to host TCP daemon (only if it doesn't exist)
 		cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
 	}
 

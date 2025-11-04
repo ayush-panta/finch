@@ -180,7 +180,11 @@ ifeq ($(BUILD_OS), Darwin)
 docker-credential-helper:
 	# Download real binary for host daemon
 	mkdir -p $(OUTDIR)/bin/cred-helpers
+ifeq ($(ARCH),arm64)
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-arm64 -o $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+else
 	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-amd64 -o $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+endif
 	chmod +x $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
 	# Create dummy script for VM (will be overwritten at runtime)
 	mkdir -p ~/.finch/cred-helpers
