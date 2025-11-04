@@ -79,7 +79,7 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+remote-all: arch-test finch finch-cred-daemon docker-credential-helper install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -168,6 +168,43 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
+
+.PHONY: finch-cred-daemon
+finch-cred-daemon:
+	$(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/finch-cred-daemon $(PACKAGE)/cmd/finch/cred-helper
+
+CRED_HELPER_VERSION ?= v0.9.4
+
+.PHONY: docker-credential-helper
+ifeq ($(BUILD_OS), Darwin)
+docker-credential-helper:
+	# Download real binary for host daemon
+	mkdir -p $(OUTDIR)/bin/cred-helpers
+ifeq ($(ARCH),arm64)
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-arm64 -o $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+else
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-osxkeychain-$(CRED_HELPER_VERSION).darwin-amd64 -o $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+endif
+	chmod +x $(OUTDIR)/bin/cred-helpers/docker-credential-osxkeychain
+	# Create dummy script for VM (will be overwritten at runtime)
+	mkdir -p ~/.finch/cred-helpers
+	echo '#!/bin/bash' > ~/.finch/cred-helpers/docker-credential-osxkeychain
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> ~/.finch/cred-helpers/docker-credential-osxkeychain
+	chmod +x ~/.finch/cred-helpers/docker-credential-osxkeychain
+else ifeq ($(BUILD_OS), Windows_NT)
+docker-credential-helper:
+	# Download real binary for host daemon
+	mkdir -p $(OUTDIR)/bin/cred-helpers
+	curl -L https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)/docker-credential-wincred-$(CRED_HELPER_VERSION).windows-amd64.exe -o $(OUTDIR)/bin/cred-helpers/docker-credential-wincred.exe
+	# Create dummy script for VM (will be overwritten at runtime)
+	mkdir -p ~/.finch/cred-helpers
+	echo '#!/bin/bash' > ~/.finch/cred-helpers/docker-credential-wincred
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> ~/.finch/cred-helpers/docker-credential-wincred
+	chmod +x ~/.finch/cred-helpers/docker-credential-wincred
+else
+docker-credential-helper:
+	@echo "No credential helper needed for Linux"
+endif
 
 .PHONY: release
 release: check-licenses all download-licenses

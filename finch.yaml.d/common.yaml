@@ -92,6 +92,10 @@ provision:
       sudo systemctl daemon-reload
 
       sudo systemctl restart containerd.service
+portForwards:
+- guestSocket: "/run/cred.sock"
+  hostSocket: "/private/tmp/cred.sock"
+
 env:
   # Containerd namespace is used by the lima cidata script
   # 40-install-containerd.sh. Specifically this variable is defining the
