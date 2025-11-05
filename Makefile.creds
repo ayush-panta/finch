@@ -1,0 +1,44 @@
+# Credential helper configuration
+CRED_HELPER_VERSION ?= v0.9.4
+CRED_HELPER_BASE_URL := https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)
+
+# Platform-specific credential helper names and architectures
+ifeq ($(BUILD_OS), Darwin)
+CRED_HELPER_NAME := docker-credential-osxkeychain
+CRED_HELPER_ARCH := $(if $(findstring arm64,$(ARCH)),darwin-arm64,darwin-amd64)
+CRED_HELPER_EXT := 
+else ifeq ($(BUILD_OS), Windows_NT)
+CRED_HELPER_NAME := docker-credential-wincred
+CRED_HELPER_ARCH := windows-amd64
+CRED_HELPER_EXT := .exe
+endif
+
+# Credential helper URLs
+CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_NAME)-$(CRED_HELPER_VERSION).$(CRED_HELPER_ARCH)$(CRED_HELPER_EXT)
+CRED_HELPER_OUTPUT := $(OUTDIR)/bin/cred-helpers/$(CRED_HELPER_NAME)$(CRED_HELPER_EXT)
+CRED_HELPER_VM_PATH := ~/.finch/cred-helpers/$(CRED_HELPER_NAME)
+
+.PHONY: finch-cred-server
+finch-cred-server:
+	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/finch-cred-server $(PACKAGE)/cmd/finch/cred-helper
+
+.PHONY: docker-credential-helper
+docker-credential-helper:
+ifeq ($(BUILD_OS), Linux)
+	@echo "No credential helper needed for Linux"
+else
+	@$(MAKE) install-credential-helper create-dummy-helper
+endif
+
+.PHONY: install-credential-helper
+install-credential-helper:
+	mkdir -p $(dir $(CRED_HELPER_OUTPUT))
+	curl -L $(CRED_HELPER_URL) -o $(CRED_HELPER_OUTPUT)
+	chmod +x $(CRED_HELPER_OUTPUT)
+
+.PHONY: create-dummy-helper
+create-dummy-helper:
+	mkdir -p $(dir $(CRED_HELPER_VM_PATH))
+	echo '#!/bin/bash' > $(CRED_HELPER_VM_PATH)
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> $(CRED_HELPER_VM_PATH)
+	chmod +x $(CRED_HELPER_VM_PATH)
