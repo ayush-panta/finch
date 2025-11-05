@@ -95,11 +95,28 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 	}
 
 	//nolint:gosec // G101: Potential hardcoded credentials false positive
-	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
-  (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
-  ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
+	const configureCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
+echo "Creating credential helper script for %s" && \
+sudo tee /usr/local/bin/docker-credential-%s > /dev/null << 'CREDEOF'
+#!/bin/bash
+# Credential helper that forwards to host daemon via TCP
+LOGFILE="/tmp/cred-helper-debug.log"
+echo "[$(date)] Credential helper called with args: $@" >> $LOGFILE
+echo "[$(date)] Input received:" >> $LOGFILE
+input=$(cat)
+echo "$input" >> $LOGFILE
+echo "[$(date)] Forwarding to host daemon via TCP" >> $LOGFILE
+# Forward to host daemon via TCP
+response=$(echo -e "$1\n$input" | nc host.lima.internal 8080)
+echo "[$(date)] Response from host: $response" >> $LOGFILE
+echo "$response"
+CREDEOF
+sudo chmod +x /usr/local/bin/docker-credential-%s
+)`
 
 	for _, credHelper := range fc.CredsHelpers {
+		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
+		// Create VM-side debug script that logs everything
 		cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
 	}
 
@@ -249,5 +266,6 @@ func (nca *nerdctlConfigApplier) Apply(remoteAddr string) error {
 	if err := updateEnvironment(sftpFs, nca.fc, nca.finchDir, nca.homeDir, limaHomeDir); err != nil {
 		return fmt.Errorf("failed to update the user's .profile file: %w", err)
 	}
+
 	return nil
 }

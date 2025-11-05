@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -21,7 +22,7 @@ var allowedNetworks = []string{
 
 func StartServer() {
 	// start the socket
-	fmt.Println("Credential helper daemon started")
+	fmt.Println("Credential helper daemon started tst")
 	socket, err := net.Listen("tcp", hostAddr)
 	if err != nil {
 		log.Fatal(err)
@@ -72,15 +73,47 @@ func StartServer() {
 				return
 			}
 
-			// dummy output for lines in
-			for i, line := range lines {
-				fmt.Println(i, line)
+			// Parse command and input
+			if len(lines) < 2 {
+				conn.Write([]byte("Error: invalid message format"))
+				return
 			}
 
-			// no return right niw
-			// conn.Write(output)
+			command := lines[0] // get, store, erase
+			input := lines[1]   // JSON or server URL
+
+			// Forward to real docker-credential-osxkeychain
+			response, err := forwardToCredHelper(command, input)
+			if err != nil {
+				log.Printf("Credential helper error: %v", err)
+				conn.Write([]byte(fmt.Sprintf("Error: %v", err)))
+				return
+			}
+
+			conn.Write([]byte(response))
 		}(conn)
 	}
+}
+
+func forwardToCredHelper(command, input string) (string, error) {
+	log.Printf("Forwarding command: %s, input: %s", command, input)
+
+	// Execute docker-credential-osxkeychain with the command
+	cmd := exec.Command("docker-credential-osxkeychain", command)
+	cmd.Stdin = strings.NewReader(input)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Credential helper stderr: %s", string(output))
+		// For get operations, return empty credentials if not found
+		if command == "get" {
+			return "credentials not found in native keychain\n", nil
+		}
+		return "", fmt.Errorf("failed to execute credential helper: %w", err)
+	}
+
+	log.Printf("Credential helper response: %s", string(output))
+	return string(output), nil
 }
 
 func isAllowedIP(ip net.IP) bool {
