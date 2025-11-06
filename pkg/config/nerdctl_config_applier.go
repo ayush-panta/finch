@@ -94,22 +94,40 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 	}
 
-	//nolint:gosec // G101: Potential hardcoded credentials false positive
 	const configureCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
 echo "Creating credential helper script for %s" && \
 sudo tee /usr/local/bin/docker-credential-%s > /dev/null << 'CREDEOF'
 #!/bin/bash
-# Credential helper that forwards to host daemon via TCP
+# Credential helper that forwards to host daemon via nc
 LOGFILE="/tmp/cred-helper-debug.log"
-echo "[$(date)] Credential helper called with args: $@" >> $LOGFILE
-echo "[$(date)] Input received:" >> $LOGFILE
+echo "" >> $LOGFILE
+echo "[$(date '+%%m/%%d %%l:%%M%%p')] Credential helper called with args: $@" >> $LOGFILE
+echo "[$(date '+%%m/%%d %%l:%%M%%p')] Input received:" >> $LOGFILE
 input=$(cat)
 echo "$input" >> $LOGFILE
-echo "[$(date)] Forwarding to host daemon via TCP" >> $LOGFILE
-# Forward to host daemon via TCP
-response=$(echo -e "$1\n$input" | nc host.lima.internal 8080)
-echo "[$(date)] Response from host: $response" >> $LOGFILE
+# echo "[$(date '+%%m/%%d %%l:%%M%%p')] Forwarding to host daemon via nc" >> $LOGFILE
+# Use nc with timeout and proper response handling
+{
+    printf "%%s\n%%s\n" "$1" "$input"
+    sleep 0.1
+} | timeout 10 nc host.lima.internal 8080 > /tmp/nc_response 2>>$LOGFILE
+exit_code=$?
+response=$(cat /tmp/nc_response 2>/dev/null)
+# echo "[$(date '+%%m/%%d %%l:%%M%%p')] NC exit code: $exit_code" >> $LOGFILE
+echo "[$(date '+%%m/%%d %%l:%%M%%p')] Response from host: $response" >> $LOGFILE
+if [ $exit_code -ne 0 ]; then
+    echo "[$(date '+%%m/%%d %%l:%%M%%p')] Error: nc failed with exit code $exit_code" >> $LOGFILE
+    echo '{"error": "credential helper connection failed"}'
+    exit 1
+fi
+# Handle empty response - only exit with code 1 for 'get' command when credentials not found
+if [ -z "$response" ] && [ "$1" = "get" ]; then
+    echo "[$(date '+%%m/%%d %%l:%%M%%p')] Empty response for get - credentials not found" >> $LOGFILE
+    exit 1
+fi
 echo "$response"
+echo "" >> $LOGFILE
+rm -f /tmp/nc_response
 CREDEOF
 sudo chmod +x /usr/local/bin/docker-credential-%s
 )`

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
 
 const hostAddr = "127.0.0.1:8080" // Listen on localhost only
@@ -22,7 +23,8 @@ var allowedNetworks = []string{
 
 func StartServer() {
 	// start the socket
-	fmt.Println("Credential helper daemon started tst")
+	fmt.Println("Credential Helper Daemon")
+	fmt.Println("Time: ", time.Now().Format("3:04pm"))
 	socket, err := net.Listen("tcp", hostAddr)
 	if err != nil {
 		log.Fatal(err)
@@ -83,13 +85,21 @@ func StartServer() {
 			input := lines[1]   // JSON or server URL
 
 			// Forward to real docker-credential-osxkeychain
-			response, err := forwardToCredHelper(command, input)
-			if err != nil {
-				log.Printf("Credential helper error: %v", err)
-				conn.Write([]byte(fmt.Sprintf("Error: %v", err)))
-				return
+			response, _ := forwardToCredHelper(command, input)
+			
+			// Handle "credentials not found" case - return empty for nerdctl compatibility
+			if strings.Contains(response, "credentials not found") {
+				response = ""
+				log.Printf("Credentials not found - returning empty response for nerdctl compatibility")
+			} else {
+				log.Printf("Response to VM: %q", response)
 			}
+			log.Println("") // Add space between chunks
 
+			// Send back response
+			// dummy_response := "THIS IS A DUMMY RESPONSE"
+			// log.Printf("Sending dummy response to VM: %q", dummy_response)
+			
 			conn.Write([]byte(response))
 		}(conn)
 	}
@@ -105,14 +115,12 @@ func forwardToCredHelper(command, input string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Credential helper stderr: %s", string(output))
-		// For get operations, return empty credentials if not found
-		if command == "get" {
-			return "credentials not found in native keychain\n", nil
-		}
-		return "", fmt.Errorf("failed to execute credential helper: %w", err)
+		// Return the actual output from credential helper (e.g., "credentials not found")
+		return string(output), nil
 	}
 
 	log.Printf("Credential helper response: %s", string(output))
+	
 	return string(output), nil
 }
 
