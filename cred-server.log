@@ -1,114 +1,206 @@
 Credential Helper Daemon
-Time:  12:53pm
-2025/11/06 12:54:18 Forwarding command: erase, input: https://index.docker.io/v1/
-2025/11/06 12:54:18 Credential helper response: 
-2025/11/06 12:54:18 Response to VM: ""
-2025/11/06 12:54:18 
-2025/11/06 12:54:39 Forwarding command: get, input: https://index.docker.io/v1/
-2025/11/06 12:54:39 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:54:39 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:54:39 
-2025/11/06 12:54:48 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:54:48 Credential helper response: 
-2025/11/06 12:54:48 Response to VM: ""
-2025/11/06 12:54:48 
-2025/11/06 12:54:48 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:54:48 Credential helper response: 
-2025/11/06 12:54:48 Response to VM: ""
-2025/11/06 12:54:48 
-2025/11/06 12:54:55 Forwarding command: get, input: https://index.docker.io/v1/
-2025/11/06 12:54:55 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:54:55 Response to VM: "{\"ServerURL\":\"https://index.docker.io/v1/\",\"Username\":\"ayushkp388\",\"Secret\":\"@AWSDocker0331!\"}\n"
-2025/11/06 12:54:55 
-2025/11/06 12:54:56 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:54:56 Credential helper response: 
-2025/11/06 12:54:56 Response to VM: ""
-2025/11/06 12:54:56 
-2025/11/06 12:54:56 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:54:56 Credential helper response: 
-2025/11/06 12:54:56 Response to VM: ""
-2025/11/06 12:54:56 
-2025/11/06 12:55:05 Forwarding command: get, input: https://index.docker.io/v1/
-2025/11/06 12:55:05 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:55:05 Response to VM: "{\"ServerURL\":\"https://index.docker.io/v1/\",\"Username\":\"ayushkp388\",\"Secret\":\"@AWSDocker0331!\"}\n"
-2025/11/06 12:55:05 
-2025/11/06 12:55:06 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:55:06 Credential helper response: 
-2025/11/06 12:55:06 Response to VM: ""
-2025/11/06 12:55:06 
-2025/11/06 12:55:06 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:55:07 Credential helper response: 
-2025/11/06 12:55:07 Response to VM: ""
-2025/11/06 12:55:07 
-2025/11/06 12:55:26 Forwarding command: get, input: registry-1.docker.io:443
-2025/11/06 12:55:26 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:26 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:26 
-2025/11/06 12:55:26 Forwarding command: get, input: https://index.docker.io/v1/
-2025/11/06 12:55:26 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:55:26 Response to VM: "{\"ServerURL\":\"https://index.docker.io/v1/\",\"Username\":\"ayushkp388\",\"Secret\":\"@AWSDocker0331!\"}\n"
-2025/11/06 12:55:26 
-2025/11/06 12:55:31 Forwarding command: get, input: registry-1.docker.io:443
-2025/11/06 12:55:31 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:31 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:31 
-2025/11/06 12:55:31 Forwarding command: get, input: https://index.docker.io/v1/
-2025/11/06 12:55:31 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
-2025/11/06 12:55:31 Response to VM: "{\"ServerURL\":\"https://index.docker.io/v1/\",\"Username\":\"ayushkp388\",\"Secret\":\"@AWSDocker0331!\"}\n"
-2025/11/06 12:55:31 
-2025/11/06 12:55:35 Forwarding command: erase, input: https://index.docker.io/v1/
-2025/11/06 12:55:35 Credential helper response: 
-2025/11/06 12:55:35 Response to VM: ""
-2025/11/06 12:55:35 
-2025/11/06 12:55:42 Forwarding command: get, input: registry-1.docker.io:443
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:55:42 Forwarding command: get, input: https://index.docker.io/v1/
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:55:42 Forwarding command: get, input: https://registry-1.docker.io:443
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:55:42 Forwarding command: get, input: http://registry-1.docker.io:443
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:55:42 Forwarding command: get, input: registry-1.docker.io
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:55:42 Forwarding command: get, input: https://registry-1.docker.io
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:55:42 Forwarding command: get, input: http://registry-1.docker.io
-2025/11/06 12:55:42 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:55:42 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:55:42 
-2025/11/06 12:56:36 Forwarding command: get, input: public.ecr.aws:443
-2025/11/06 12:56:36 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:56:36 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:56:36 
-2025/11/06 12:56:36 Forwarding command: get, input: https://public.ecr.aws:443
-2025/11/06 12:56:36 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:56:36 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:56:36 
-2025/11/06 12:56:36 Forwarding command: get, input: http://public.ecr.aws:443
-2025/11/06 12:56:36 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:56:36 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:56:36 
-2025/11/06 12:56:36 Forwarding command: get, input: public.ecr.aws
-2025/11/06 12:56:36 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:56:36 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:56:36 
-2025/11/06 12:56:36 Forwarding command: get, input: https://public.ecr.aws
-2025/11/06 12:56:36 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:56:36 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:56:36 
-2025/11/06 12:56:36 Forwarding command: get, input: http://public.ecr.aws
-2025/11/06 12:56:36 Credential helper stderr: credentials not found in native keychain
-2025/11/06 12:56:36 Credentials not found - returning empty response for nerdctl compatibility
-2025/11/06 12:56:36 
+Time:  1:36pm
+2025/11/07 13:37:50 Forwarding command: erase, input: https://index.docker.io/v1/
+2025/11/07 13:37:50 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:37:50 Credentials not found - returning empty response for nerdctl compatibility
+2025/11/07 13:37:50 
+2025/11/07 13:38:26 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:38:26 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:38:26 Response to VM: "{\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:38:26 
+2025/11/07 13:38:38 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:38:38 Credential helper response: 
+2025/11/07 13:38:38 Response to VM: ""
+2025/11/07 13:38:38 
+2025/11/07 13:38:38 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:38:38 Credential helper response: 
+2025/11/07 13:38:38 Response to VM: ""
+2025/11/07 13:38:38 
+2025/11/07 13:38:43 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:38:43 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:38:43 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:38:43 
+2025/11/07 13:38:57 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:38:57 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:38:57 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:38:57 
+2025/11/07 13:39:06 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:06 Credential helper response: 
+2025/11/07 13:39:06 Response to VM: ""
+2025/11/07 13:39:06 
+2025/11/07 13:39:06 Forwarding command: store, input: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:06 Credential helper response: 
+2025/11/07 13:39:06 Response to VM: ""
+2025/11/07 13:39:06 
+2025/11/07 13:39:08 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:39:08 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:08 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:39:08 
+2025/11/07 13:39:28 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:39:28 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:39:28 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:39:28 
+2025/11/07 13:39:28 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:39:28 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:28 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:39:28 
+2025/11/07 13:39:41 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:39:41 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:39:41 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:39:41 
+2025/11/07 13:39:41 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:39:41 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:41 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:39:41 
+2025/11/07 13:39:49 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:39:49 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:39:49 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:39:49 
+2025/11/07 13:39:49 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:39:49 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:49 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:39:49 
+2025/11/07 13:39:50 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:39:50 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:39:50 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:39:50 
+2025/11/07 13:39:50 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:39:50 Credential helper response: {"ServerURL":"https://index.docker.io/v1/","Username":"ayushkp388","Secret":"@AWSDocker0331!"}
+2025/11/07 13:39:50 Response to VM: "{\"username\":\"ayushkp388\",\"password\":\"@AWSDocker0331!\",\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:39:50 
+2025/11/07 13:40:01 Forwarding command: erase, input: https://index.docker.io/v1/
+2025/11/07 13:40:01 Credential helper response: 
+2025/11/07 13:40:01 Response to VM: ""
+2025/11/07 13:40:01 
+2025/11/07 13:40:08 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:40:08 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:08 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:40:08 
+2025/11/07 13:40:08 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:40:08 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:08 Response to VM: "{\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:40:08 
+2025/11/07 13:40:08 Forwarding command: get, input: https://registry-1.docker.io:443
+2025/11/07 13:40:08 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:08 Response to VM: "{\"serveraddress\":\"https://registry-1.docker.io:443\"}"
+2025/11/07 13:40:08 
+2025/11/07 13:40:08 Forwarding command: get, input: http://registry-1.docker.io:443
+2025/11/07 13:40:08 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:08 Response to VM: "{\"serveraddress\":\"http://registry-1.docker.io:443\"}"
+2025/11/07 13:40:08 
+2025/11/07 13:40:08 Forwarding command: get, input: registry-1.docker.io
+2025/11/07 13:40:08 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:08 Response to VM: "{\"serveraddress\":\"registry-1.docker.io\"}"
+2025/11/07 13:40:08 
+2025/11/07 13:40:08 Forwarding command: get, input: https://registry-1.docker.io
+2025/11/07 13:40:08 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:08 Response to VM: "{\"serveraddress\":\"https://registry-1.docker.io\"}"
+2025/11/07 13:40:08 
+2025/11/07 13:40:08 Forwarding command: get, input: http://registry-1.docker.io
+2025/11/07 13:40:09 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:09 Response to VM: "{\"serveraddress\":\"http://registry-1.docker.io\"}"
+2025/11/07 13:40:09 
+2025/11/07 13:40:16 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:16 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:16 Forwarding command: get, input: https://registry-1.docker.io:443
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"https://registry-1.docker.io:443\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:16 Forwarding command: get, input: http://registry-1.docker.io:443
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"http://registry-1.docker.io:443\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:16 Forwarding command: get, input: registry-1.docker.io
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"registry-1.docker.io\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:16 Forwarding command: get, input: https://registry-1.docker.io
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"https://registry-1.docker.io\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:16 Forwarding command: get, input: http://registry-1.docker.io
+2025/11/07 13:40:16 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:16 Response to VM: "{\"serveraddress\":\"http://registry-1.docker.io\"}"
+2025/11/07 13:40:16 
+2025/11/07 13:40:17 Forwarding command: get, input: registry-1.docker.io:443
+2025/11/07 13:40:17 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:17 Response to VM: "{\"serveraddress\":\"registry-1.docker.io:443\"}"
+2025/11/07 13:40:17 
+2025/11/07 13:40:17 Forwarding command: get, input: https://index.docker.io/v1/
+2025/11/07 13:40:17 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:17 Response to VM: "{\"serveraddress\":\"https://index.docker.io/v1/\"}"
+2025/11/07 13:40:17 
+2025/11/07 13:40:17 Forwarding command: get, input: https://registry-1.docker.io:443
+2025/11/07 13:40:17 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:17 Response to VM: "{\"serveraddress\":\"https://registry-1.docker.io:443\"}"
+2025/11/07 13:40:17 
+2025/11/07 13:40:17 Forwarding command: get, input: http://registry-1.docker.io:443
+2025/11/07 13:40:17 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:17 Response to VM: "{\"serveraddress\":\"http://registry-1.docker.io:443\"}"
+2025/11/07 13:40:17 
+2025/11/07 13:40:18 Forwarding command: get, input: registry-1.docker.io
+2025/11/07 13:40:18 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:18 Response to VM: "{\"serveraddress\":\"registry-1.docker.io\"}"
+2025/11/07 13:40:18 
+2025/11/07 13:40:18 Forwarding command: get, input: https://registry-1.docker.io
+2025/11/07 13:40:18 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:18 Response to VM: "{\"serveraddress\":\"https://registry-1.docker.io\"}"
+2025/11/07 13:40:18 
+2025/11/07 13:40:18 Forwarding command: get, input: http://registry-1.docker.io
+2025/11/07 13:40:18 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:18 Response to VM: "{\"serveraddress\":\"http://registry-1.docker.io\"}"
+2025/11/07 13:40:18 
+2025/11/07 13:40:48 Forwarding command: get, input: public.ecr.aws:443
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"public.ecr.aws:443\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:48 Forwarding command: get, input: https://public.ecr.aws:443
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"https://public.ecr.aws:443\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:48 Forwarding command: get, input: http://public.ecr.aws:443
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"http://public.ecr.aws:443\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:48 Forwarding command: get, input: public.ecr.aws
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"public.ecr.aws\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:48 Forwarding command: get, input: https://public.ecr.aws
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"https://public.ecr.aws\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:48 Forwarding command: get, input: http://public.ecr.aws
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"http://public.ecr.aws\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:48 Forwarding command: get, input: public.ecr.aws:443
+2025/11/07 13:40:48 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:48 Response to VM: "{\"serveraddress\":\"public.ecr.aws:443\"}"
+2025/11/07 13:40:48 
+2025/11/07 13:40:49 Forwarding command: get, input: https://public.ecr.aws:443
+2025/11/07 13:40:49 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:49 Response to VM: "{\"serveraddress\":\"https://public.ecr.aws:443\"}"
+2025/11/07 13:40:49 
+2025/11/07 13:40:49 Forwarding command: get, input: http://public.ecr.aws:443
+2025/11/07 13:40:49 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:49 Response to VM: "{\"serveraddress\":\"http://public.ecr.aws:443\"}"
+2025/11/07 13:40:49 
+2025/11/07 13:40:49 Forwarding command: get, input: public.ecr.aws
+2025/11/07 13:40:49 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:49 Response to VM: "{\"serveraddress\":\"public.ecr.aws\"}"
+2025/11/07 13:40:49 
+2025/11/07 13:40:49 Forwarding command: get, input: https://public.ecr.aws
+2025/11/07 13:40:49 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:49 Response to VM: "{\"serveraddress\":\"https://public.ecr.aws\"}"
+2025/11/07 13:40:49 
+2025/11/07 13:40:49 Forwarding command: get, input: http://public.ecr.aws
+2025/11/07 13:40:49 Credential helper stderr: credentials not found in native keychain
+2025/11/07 13:40:49 Response to VM: "{\"serveraddress\":\"http://public.ecr.aws\"}"
+2025/11/07 13:40:49 

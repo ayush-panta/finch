@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -10,9 +11,14 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	dockertypes "github.com/docker/cli/cli/config/types"
+	"github.com/docker/docker-credential-helpers/credentials"
 )
 
 const hostAddr = "127.0.0.1:8080" // Listen on localhost only
+
+
 
 // Lima VM IP ranges to allow
 var allowedNetworks = []string{
@@ -113,15 +119,40 @@ func forwardToCredHelper(command, input string) (string, error) {
 	cmd.Stdin = strings.NewReader(input)
 
 	output, err := cmd.CombinedOutput()
+	response := strings.TrimSpace(string(output))
+	
 	if err != nil {
-		log.Printf("Credential helper stderr: %s", string(output))
-		// Return the actual output from credential helper (e.g., "credentials not found")
-		return string(output), nil
+		log.Printf("Credential helper stderr: %s", response)
+		// For get commands, return empty AuthConfig instead of error string
+		if command == "get" {
+			emptyAuth := dockertypes.AuthConfig{ServerAddress: input}
+			authJSON, _ := json.Marshal(emptyAuth)
+			return string(authJSON), nil
+		}
+		return response, nil
 	}
 
-	log.Printf("Credential helper response: %s", string(output))
+	log.Printf("Credential helper response: %s", response)
+
+	// For get commands with successful responses, convert to AuthConfig
+	if command == "get" && response != "" {
+		var creds credentials.Credentials
+		if err := json.Unmarshal([]byte(response), &creds); err == nil {
+			// Convert to Docker AuthConfig
+			authConfig := dockertypes.AuthConfig{
+				Username:      creds.Username,
+				Password:      creds.Secret,
+				ServerAddress: creds.ServerURL,
+			}
+			
+			authJSON, err := json.Marshal(authConfig)
+			if err == nil {
+				return string(authJSON), nil
+			}
+		}
+	}
 	
-	return string(output), nil
+	return response, nil
 }
 
 func isAllowedIP(ip net.IP) bool {
