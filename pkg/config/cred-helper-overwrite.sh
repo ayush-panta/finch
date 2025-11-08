@@ -11,7 +11,7 @@ echo "$input" >> $LOGFILE
 {
     printf "%%s\n%%s\n" "$1" "$input"
     sleep 0.1
-} | timeout 10 nc host.lima.internal 8080 > /tmp/nc_response 2>>$LOGFILE
+} | timeout 10 nc -U /tmp/finch-creds.sock > /tmp/nc_response 2>>$LOGFILE
 exit_code=$?
 response=$(cat /tmp/nc_response 2>/dev/null)
 # echo "[$(date '+%%m/%%d %%l:%%M%%p')] NC exit code: $exit_code" >> $LOGFILE

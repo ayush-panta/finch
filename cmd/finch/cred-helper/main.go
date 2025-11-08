@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -18,8 +19,6 @@ import (
 
 const hostAddr = "127.0.0.1:8080" // Listen on localhost only
 
-
-
 // Lima VM IP ranges to allow
 var allowedNetworks = []string{
 	"192.168.5.0/24",   // Lima default network
@@ -27,11 +26,17 @@ var allowedNetworks = []string{
 	"127.0.0.1/32",     // Localhost
 }
 
+var socketAddr = filepath.Join(os.Getenv("HOME"), ".finch", "creds.sock")
+
 func StartServer() {
 	// start the socket
 	fmt.Println("Credential Helper Daemon")
 	fmt.Println("Time: ", time.Now().Format("3:04pm"))
-	socket, err := net.Listen("tcp", hostAddr)
+	
+	// Remove existing socket file if it exists
+	os.Remove(socketAddr)
+	
+	socket, err := net.Listen("unix", socketAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,7 +46,7 @@ func StartServer() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		// os.Remove(hostAddr)
+		os.Remove(socketAddr)
 		os.Exit(1)
 	}()
 
@@ -53,13 +58,7 @@ func StartServer() {
 			continue
 		}
 
-		// Check if connection is from allowed IP
-		remoteAddr := conn.RemoteAddr().(*net.TCPAddr)
-		if !isAllowedIP(remoteAddr.IP) {
-			log.Printf("Rejected connection from %s", remoteAddr.IP)
-			conn.Close()
-			continue
-		}
+		// Unix sockets use file permissions for security, no IP checking needed
 
 		// goroutine for processing
 		go func(conn net.Conn) {
@@ -92,7 +91,7 @@ func StartServer() {
 
 			// Forward to real docker-credential-osxkeychain
 			response, _ := forwardToCredHelper(command, input)
-			
+
 			// Handle "credentials not found" case - return empty for nerdctl compatibility
 			if strings.Contains(response, "credentials not found") {
 				response = ""
@@ -105,7 +104,7 @@ func StartServer() {
 			// Send back response
 			// dummy_response := "THIS IS A DUMMY RESPONSE"
 			// log.Printf("Sending dummy response to VM: %q", dummy_response)
-			
+
 			conn.Write([]byte(response))
 		}(conn)
 	}
@@ -120,7 +119,7 @@ func forwardToCredHelper(command, input string) (string, error) {
 
 	output, err := cmd.CombinedOutput()
 	response := strings.TrimSpace(string(output))
-	
+
 	if err != nil {
 		log.Printf("Credential helper stderr: %s", response)
 		// For get commands, return empty AuthConfig instead of error string
@@ -144,14 +143,14 @@ func forwardToCredHelper(command, input string) (string, error) {
 				Password:      creds.Secret,
 				ServerAddress: creds.ServerURL,
 			}
-			
+
 			authJSON, err := json.Marshal(authConfig)
 			if err == nil {
 				return string(authJSON), nil
 			}
 		}
 	}
-	
+
 	return response, nil
 }
 
