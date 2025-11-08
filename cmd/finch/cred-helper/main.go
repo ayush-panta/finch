@@ -32,10 +32,10 @@ func StartServer() {
 	// start the socket
 	fmt.Println("Credential Helper Daemon")
 	fmt.Println("Time: ", time.Now().Format("3:04pm"))
-	
+
 	// Remove existing socket file if it exists
 	os.Remove(socketAddr)
-	
+
 	socket, err := net.Listen("unix", socketAddr)
 	if err != nil {
 		log.Fatal(err)

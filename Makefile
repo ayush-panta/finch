@@ -25,7 +25,17 @@ LIMA_EXTENSION := .tar.gz
 LIMA_VDE_SUDOERS_FILE := /etc/sudoers.d/finch-lima
 # Final installation prefix for vde created by CLI after installation, only used in uninstall step
 VDE_INSTALL ?= /opt/finch
-ARCH ?= $(shell uname -m)
+ifeq ($(OS),Windows_NT)
+	ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+		ARCH ?= x86_64
+	else ifeq ($(PROCESSOR_ARCHITECTURE),ARM64)
+		ARCH ?= arm64
+	else
+		ARCH ?= x86_64
+	endif
+else
+	ARCH ?= $(shell uname -m)
+endif
 SUPPORTED_ARCH = false
 LICENSEDIR := $(OUTDIR)/license-files
 VERSION ?= $(shell git describe --match 'v[0-9]*' --dirty='.modified'  --abbrev=0 --always --tags)
