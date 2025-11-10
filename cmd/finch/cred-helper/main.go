@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -27,6 +28,30 @@ var allowedNetworks = []string{
 }
 
 var socketAddr = filepath.Join(os.Getenv("HOME"), ".finch", "creds.sock")
+
+// normalizeURL strips schemes and ports from URLs
+func normalizeURL(serverURL string) string {
+	if serverURL == "" {
+		return serverURL
+	}
+	
+	// Strip scheme if present
+	if u, err := url.Parse(serverURL); err == nil && u.Scheme != "" {
+		serverURL = u.Host + u.Path
+	}
+
+	// Strip port if present
+	if host, _, err := net.SplitHostPort(serverURL); err == nil {
+		serverURL = host
+	}
+
+	// Normalize Docker Hub hostnames
+	if strings.Contains(serverURL, "docker.io") {
+		return "docker.io"
+	}
+
+	return serverURL
+}
 
 func StartServer() {
 	// start the socket
@@ -89,8 +114,26 @@ func StartServer() {
 			command := lines[0] // get, store, erase
 			input := lines[1]   // JSON or server URL
 
+			// Normalize URL for all commands
+			normalizedInput := input
+			if command == "get" || command == "erase" {
+				// For get/erase, input is just the server URL
+				normalizedInput = normalizeURL(input)
+			} else if command == "store" {
+				// For store, input is JSON - normalize the ServerURL field
+				var creds credentials.Credentials
+				if err := json.Unmarshal([]byte(input), &creds); err == nil {
+					creds.ServerURL = normalizeURL(creds.ServerURL)
+					if normalizedJSON, err := json.Marshal(creds); err == nil {
+						normalizedInput = string(normalizedJSON)
+					}
+				}
+			}
+
+			log.Printf("Normalized input: %q", normalizedInput)
+
 			// Forward to real docker-credential-osxkeychain
-			response, _ := forwardToCredHelper(command, input)
+			response, _ := forwardToCredHelper(command, normalizedInput)
 
 			// Handle "credentials not found" case - return empty for nerdctl compatibility
 			if strings.Contains(response, "credentials not found") {
@@ -146,6 +189,7 @@ func forwardToCredHelper(command, input string) (string, error) {
 
 			authJSON, err := json.Marshal(authConfig)
 			if err == nil {
+				log.Printf("DEBUG: Returning AuthConfig JSON: %s", string(authJSON))
 				return string(authJSON), nil
 			}
 		}
