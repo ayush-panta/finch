@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <key>Label</key>
+    <string>com.runfinch.credhelper</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>${HOME}/Documents/finch-creds/finch/_output/bin/finch-cred-server</string>
+    </array>
+
+    <key>Sockets</key>
+    <dict>
+        <key>Listeners</key>
+        <array>
+            <dict>
+                <key>SockPathName</key>
+                <string>${HOME}/.finch/creds.sock</string>
+                <key>SockPathMode</key>
+                <integer>384</integer>
+            </dict>
+        </array>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>${HOME}/.finch/cred-helper.log</string>
+    <key>StandardErrorPath</key>
+    <string>${HOME}/.finch/cred-helper.log</string>
+
+</dict>
+</plist>
