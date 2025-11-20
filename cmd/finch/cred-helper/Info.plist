@@ -8,7 +8,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>${HOME}/Documents/finch-creds/finch/_output/bin/finch-cred-server</string>
+        <string>/Users/ayushkp/Documents/finch-creds/finch/_output/bin/finch-cred-server</string>
     </array>
 
     <key>Sockets</key>
@@ -17,7 +17,7 @@
         <array>
             <dict>
                 <key>SockPathName</key>
-                <string>${HOME}/.finch/creds.sock</string>
+                <string>/Users/ayushkp/.finch/creds.sock</string>
                 <key>SockPathMode</key>
                 <integer>384</integer>
             </dict>
@@ -25,9 +25,18 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>${HOME}/.finch/cred-helper.log</string>
+    <string>/Users/ayushkp/Documents/finch-creds/finch/cred-helper-new.log</string>
     <key>StandardErrorPath</key>
-    <string>${HOME}/.finch/cred-helper.log</string>
+    <string>/Users/ayushkp/Documents/finch-creds/finch/cred-helper-new.log</string>
+    
+    <key>inetdCompatibility</key>
+    <dict>
+        <key>Wait</key>
+        <false/>
+    </dict>
+
+
+
 
 </dict>
 </plist>

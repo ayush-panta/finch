@@ -409,6 +409,14 @@ mdlint:
 mdlint-ctr:
 	$(BINARYNAME) run --rm -v "$(shell pwd):/repo:ro" -w /repo avtodev/markdown-lint:v1 --ignore CHANGELOG.md '**/*.md'
 
+.PHONY: dev-clean
+dev-clean:
+	-@rm -rf $(OUTDIR) 2>/dev/null || true
+	-@$(MAKE) -C $(FINCH_CORE_DIR) clean
+	-@rm ./*.tar.gz 2>/dev/null || true
+	-@rm ./*.qcow2 2>/dev/null || true
+	-@rm ./test-coverage.* 2>/dev/null || true
+
 .PHONY: clean
 ifeq ($(GOOS),windows)
 clean:
