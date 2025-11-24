@@ -7,9 +7,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 	"time"
-	"os/user"
 
 	// dockertypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker-credential-helpers/credentials"
@@ -25,12 +25,12 @@ func RunCredScript() {
 
 	current, _ := user.Current()
 	log.Printf("Running as: %s (UID: %s)", current.Username, current.Uid)
-	
+
 	// Log keychain information
 	keychainCmd := exec.Command("security", "list-keychains")
 	keychainOutput, _ := keychainCmd.CombinedOutput()
 	log.Printf("Available keychains: %s", strings.TrimSpace(string(keychainOutput)))
-	
+
 	// Log default keychain
 	defaultCmd := exec.Command("security", "default-keychain")
 	defaultOutput, _ := defaultCmd.CombinedOutput()
@@ -80,7 +80,7 @@ func forwardToCredHelper(command, input string) (string, error) {
 	// Execute docker-credential-osxkeychain with the command
 	cmd := exec.Command("/Users/ayushkp/Documents/finch-creds/finch/_output/bin/cred-helpers/docker-credential-osxkeychain", command)
 	cmd.Stdin = strings.NewReader(input)
-	
+
 	// Ensure keychain access by inheriting user environment
 	cmd.Env = os.Environ()
 
@@ -118,17 +118,17 @@ func main() {
 	fmt.Fprintf(f, "Service started at %s\n", time.Now())
 	fmt.Fprintf(f, "XPC_SERVICE_NAME: %s\n", os.Getenv("XPC_SERVICE_NAME"))
 	fmt.Fprintf(f, "LAUNCH_DAEMON_SOCKET_NAME: %s\n", os.Getenv("LAUNCH_DAEMON_SOCKET_NAME"))
-	
+
 	// Test if stdin is a network connection (inetd style)
 	if _, err := net.FileConn(os.Stdin); err == nil {
 		fmt.Fprintf(f, "SUCCESS: stdin is a network connection\n")
 		f.Close()
-		
+
 		// Also log to plist location
 		plistLog, _ := os.OpenFile("/Users/ayushkp/Documents/finch-creds/finch/cred-helper.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		fmt.Fprintf(plistLog, "=== Service triggered at %s ===\n", time.Now().Format("3:04pm"))
 		plistLog.Close()
-		
+
 		RunCredScript()
 	} else {
 		fmt.Fprintf(f, "ERROR: stdin is not a network connection: %v\n", err)
