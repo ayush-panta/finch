@@ -10,7 +10,7 @@
     <array>
         <string>/bin/sh</string>
         <string>-c</string>
-        <string>exec $HOME/Documents/finch-creds/finch/_output/bin/finch-cred-bridge</string>
+        <string>exec /Applications/Finch/bin/finch-cred-bridge</string>
     </array>
 
     <key>Sockets</key>
@@ -27,9 +27,9 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>$HOME/Documents/finch-creds/finch/cred-helper-new.log</string>
+    <string>/Users/ayushkp/.finch/cred-bridge.log</string>
     <key>StandardErrorPath</key>
-    <string>$HOME/Documents/finch-creds/finch/cred-helper-new.log</string>
+    <string>/Users/ayushkp/.finch/cred-bridge.log</string>
     
     <key>inetdCompatibility</key>
     <dict>

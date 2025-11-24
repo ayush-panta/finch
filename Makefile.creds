@@ -89,6 +89,30 @@ dev-uninstall:
 	-sudo rm /Applications/Finch/bin/finch-cred-bridge 2>/dev/null || true
 	-sudo rm /Applications/Finch/bin/finch 2>/dev/null || true
 	@echo "Development installation removed"
+
+.PHONY: setup-cred-bridge
+setup-cred-bridge:
+ifeq ($(BUILD_OS), Darwin)
+	@echo "Setting up credential bridge..."
+	@if [ ! -L "/Applications/Finch/bin/finch-cred-bridge" ]; then \
+		echo "Creating credential bridge symlink (requires sudo)..."; \
+		sudo mkdir -p /Applications/Finch/bin/; \
+		sudo ln -sf $(CURDIR)/_output/bin/finch-cred-bridge /Applications/Finch/bin/finch-cred-bridge; \
+	fi
+	@if [ ! -L "/Applications/Finch/bin/finch" ]; then \
+		echo "Creating finch binary symlink (requires sudo)..."; \
+		sudo ln -sf $(CURDIR)/_output/bin/finch /Applications/Finch/bin/finch; \
+	fi
+	@if ! launchctl list | grep -q com.runfinch.cred-bridge; then \
+		echo "Installing LaunchAgent..."; \
+		$(MAKE) install-plist; \
+	else \
+		echo "LaunchAgent already loaded"; \
+	fi
+	@echo "Credential bridge setup complete"
+else
+	@echo "Credential bridge setup is macOS-specific"
+endif
 else
 .PHONY: install-plist uninstall-plist reload-plist
 install-plist uninstall-plist reload-plist:
