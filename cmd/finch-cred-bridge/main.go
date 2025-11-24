@@ -53,12 +53,25 @@ func RunCredScript() {
 	}
 
 	// Parse command and input
-	if len(lines) != 2 {
-		conn.Write([]byte("Error: invalid message format"))
+	if len(lines) < 1 {
+		conn.Write([]byte("Error: no command provided"))
 		return
 	}
-	command := lines[0] // get, store, erase
-	input := lines[1]   // JSON or server URL
+	command := lines[0] // get, store, erase, list
+	
+	// Handle input based on command type
+	var input string
+	if command == "list" {
+		// list command doesn't need input
+		input = ""
+	} else {
+		// get, store, erase need input
+		if len(lines) != 2 {
+			conn.Write([]byte("Error: command requires input"))
+			return
+		}
+		input = lines[1] // JSON or server URL
+	}
 
 	response, _ := forwardToCredHelper(command, input)
 

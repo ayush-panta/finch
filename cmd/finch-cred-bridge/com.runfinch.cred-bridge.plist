@@ -4,11 +4,13 @@
 <dict>
 
     <key>Label</key>
-    <string>com.runfinch.credhelper</string>
+    <string>com.runfinch.cred-bridge</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/ayushkp/Documents/finch-creds/finch/_output/bin/finch-cred-server</string>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>exec $HOME/Documents/finch-creds/finch/_output/bin/finch-cred-bridge</string>
     </array>
 
     <key>Sockets</key>
@@ -25,9 +27,9 @@
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/ayushkp/Documents/finch-creds/finch/cred-helper-new.log</string>
+    <string>$HOME/Documents/finch-creds/finch/cred-helper-new.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/ayushkp/Documents/finch-creds/finch/cred-helper-new.log</string>
+    <string>$HOME/Documents/finch-creds/finch/cred-helper-new.log</string>
     
     <key>inetdCompatibility</key>
     <dict>
