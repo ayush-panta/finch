@@ -7,6 +7,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/runfinch/finch/pkg/disk"
@@ -123,6 +126,27 @@ func (iva *initVMAction) run() error {
 	}
 
 	iva.logger.Info("Finch virtual machine started successfully")
+
+	if runtime.GOOS == "darwin" {
+		// Install credential helper launchd service
+		plistSrc := filepath.Join(os.Getenv("HOME"), "Documents/finch-creds/finch/cmd/finch/cred-helper/Info.plist")
+		plistDst := filepath.Join(os.Getenv("HOME"), "Library/LaunchAgents/com.runfinch.credhelper.plist")
+		
+		// Copy plist file
+		cpCmd := exec.Command("cp", plistSrc, plistDst)
+		if err := cpCmd.Run(); err != nil {
+			iva.logger.Warnf("Failed to copy credential helper plist: %v", err)
+		} else {
+			// Load the service
+			loadCmd := exec.Command("launchctl", "load", plistDst)
+			if err := loadCmd.Run(); err != nil {
+				iva.logger.Warnf("Failed to load credential helper service: %v", err)
+			} else {
+				iva.logger.Info("Credential helper service installed successfully")
+			}
+		}
+	}
+
 	return nil
 }
 

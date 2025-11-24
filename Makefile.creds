@@ -18,9 +18,9 @@ CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_NAME)-$(CRED_HELPER_VER
 CRED_HELPER_OUTPUT := $(OUTDIR)/bin/cred-helpers/$(CRED_HELPER_NAME)$(CRED_HELPER_EXT)
 CRED_HELPER_VM_PATH := ~/.finch/cred-helpers/$(CRED_HELPER_NAME)
 
-.PHONY: finch-cred-server
-finch-cred-server:
-	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/finch-cred-server $(PACKAGE)/cmd/finch/cred-helper
+.PHONY: finch-cred-bridge
+finch-cred-bridge:
+	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/finch-cred-bridge $(PACKAGE)/cmd/finch-cred-bridge
 
 .PHONY: docker-credential-helper
 docker-credential-helper:
@@ -42,3 +42,79 @@ create-dummy-helper:
 	echo '#!/bin/bash' > $(CRED_HELPER_VM_PATH)
 	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> $(CRED_HELPER_VM_PATH)
 	chmod +x $(CRED_HELPER_VM_PATH)
+
+# LaunchAgent plist management (macOS only)
+ifeq ($(BUILD_OS), Darwin)
+PLIST_NAME := com.runfinch.cred-bridge.plist
+PLIST_SOURCE := cmd/finch-cred-bridge/$(PLIST_NAME)
+PLIST_TEMPLATE := cmd/finch-cred-bridge/$(PLIST_NAME).template
+PLIST_DEST := $(HOME)/Library/LaunchAgents/$(PLIST_NAME)
+
+.PHONY: generate-plist
+generate-plist:
+	@echo "Generating plist with current paths..."
+	sed -e "s|\$$HOME|$(HOME)|g" \
+	    -e "s|\$$USER|$(USER)|g" \
+	    $(PLIST_TEMPLATE) > $(PLIST_SOURCE)
+
+.PHONY: install-plist
+install-plist: generate-plist
+	@echo "Installing LaunchAgent plist..."
+	cp $(PLIST_SOURCE) $(PLIST_DEST)
+	launchctl load $(PLIST_DEST)
+	@echo "LaunchAgent loaded successfully"
+
+.PHONY: uninstall-plist
+uninstall-plist:
+	@echo "Uninstalling LaunchAgent plist..."
+	-launchctl unload $(PLIST_DEST) 2>/dev/null || true
+	-rm $(PLIST_DEST) 2>/dev/null || true
+	@echo "LaunchAgent uninstalled"
+
+.PHONY: reload-plist
+reload-plist: uninstall-plist install-plist
+	@echo "LaunchAgent reloaded"
+
+.PHONY: dev-install
+dev-install:
+	@echo "Creating development symlinks to mimic /Applications/Finch installation..."
+	sudo mkdir -p /Applications/Finch/bin/
+	sudo ln -sf $(CURDIR)/_output/bin/finch-cred-bridge /Applications/Finch/bin/finch-cred-bridge
+	sudo ln -sf $(CURDIR)/_output/bin/finch /Applications/Finch/bin/finch
+	@echo "Development installation complete - finch appears to be in /Applications/Finch"
+
+.PHONY: dev-uninstall
+dev-uninstall:
+	@echo "Removing development symlinks..."
+	-sudo rm /Applications/Finch/bin/finch-cred-bridge 2>/dev/null || true
+	-sudo rm /Applications/Finch/bin/finch 2>/dev/null || true
+	@echo "Development installation removed"
+
+.PHONY: setup-cred-bridge
+setup-cred-bridge:
+ifeq ($(BUILD_OS), Darwin)
+	@echo "Setting up credential bridge..."
+	@if [ ! -L "/Applications/Finch/bin/finch-cred-bridge" ]; then \
+		echo "Creating credential bridge symlink (requires sudo)..."; \
+		sudo mkdir -p /Applications/Finch/bin/; \
+		sudo ln -sf $(CURDIR)/_output/bin/finch-cred-bridge /Applications/Finch/bin/finch-cred-bridge; \
+	fi
+	@if [ ! -L "/Applications/Finch/bin/finch" ]; then \
+		echo "Creating finch binary symlink (requires sudo)..."; \
+		sudo ln -sf $(CURDIR)/_output/bin/finch /Applications/Finch/bin/finch; \
+	fi
+	@if ! launchctl list | grep -q com.runfinch.cred-bridge; then \
+		echo "Installing LaunchAgent..."; \
+		$(MAKE) install-plist; \
+	else \
+		echo "LaunchAgent already loaded"; \
+	fi
+	@echo "Credential bridge setup complete"
+else
+	@echo "Credential bridge setup is macOS-specific"
+endif
+else
+.PHONY: install-plist uninstall-plist reload-plist
+install-plist uninstall-plist reload-plist:
+	@echo "LaunchAgent plist management is macOS-specific"
+endif

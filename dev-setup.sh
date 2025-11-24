@@ -15,22 +15,17 @@ make clean
 echo "🔨 Building finch..."
 make
 
-echo "💀 Killing existing credential servers..."
-pkill -f "finch-cred-server" || true
+echo "🧹 Cleaning credential helper log..."
+rm -f ~/.finch/cred-helper.log
 
-echo "🚀 Starting credential server in background..."
-nohup ./_output/bin/finch-cred-server > cred-server.log 2>&1 &
-CRED_SERVER_PID=$!
-echo "Credential server started with PID: $CRED_SERVER_PID"
-echo "Server logs: tail -f cred-server.log"
-
-# Give the server a moment to start
-sleep 2
+echo "🔄 Reloading credential helper service..."
+launchctl unload ~/Library/LaunchAgents/com.runfinch.credhelper.plist 2>/dev/null || true
+launchctl load ~/Library/LaunchAgents/com.runfinch.credhelper.plist
 
 echo "🖥️  Initializing VM..."
 ./_output/bin/finch vm init
 
 echo "✅ Setup complete!"
-echo "📝 Credential server PID: $CRED_SERVER_PID"
-echo "🔍 To test connection from VM: echo 'test' | nc 192.168.5.2 8080"
-echo "🛑 To stop server: kill $CRED_SERVER_PID"
+echo "📝 Credential helper will be managed by launchd"
+echo "🔍 To view logs: tail -f ~/Documents/finch-creds/finch/cred-helper.log"
+echo "🧪 To test socket: echo -e 'erase\nhttps://index.docker.io/v1/' | nc -U ~/.finch/creds.sock"
