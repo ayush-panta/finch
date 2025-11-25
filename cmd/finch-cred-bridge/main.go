@@ -8,146 +8,196 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
-	// dockertypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker-credential-helpers/credentials"
 )
 
-func RunCredScript() {
-	// With inetdCompatibility, launchd passes a pre-connected socket as fd 0 (stdin)
+const (
+	maxBufferSize = 4096
+	timeFormat    = "15:04:05"
+)
+
+func handleCredentialRequest() error {
 	conn, err := net.FileConn(os.Stdin)
 	if err != nil {
-		log.Fatalf("Failed to get connection from stdin: %v", err)
+		return fmt.Errorf("failed to get connection from stdin: %w", err)
 	}
 	defer conn.Close()
 
-	current, _ := user.Current()
-	log.Printf("Running as: %s (UID: %s)", current.Username, current.Uid)
+	current, err := user.Current()
+	if err != nil {
+		log.Printf("Warning: could not get current user: %v", err)
+	} else {
+		log.Printf("Running as: %s (UID: %s)", current.Username, current.Uid)
+	}
 
-	// Log keychain information
-	keychainCmd := exec.Command("security", "list-keychains")
-	keychainOutput, _ := keychainCmd.CombinedOutput()
-	log.Printf("Available keychains: %s", strings.TrimSpace(string(keychainOutput)))
+	logCredentialStoreInfo()
 
-	// Log default keychain
-	defaultCmd := exec.Command("security", "default-keychain")
-	defaultOutput, _ := defaultCmd.CombinedOutput()
-	log.Printf("Default keychain: %s", strings.TrimSpace(string(defaultOutput)))
-
-	// buffer for reading socket
-	buffer := make([]byte, 4096)
+	buffer := make([]byte, maxBufferSize)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		log.Printf("Read error: %v", err)
-		return
+		return fmt.Errorf("read error: %w", err)
 	}
 
-	// need to read in the data
 	message := strings.TrimSpace(string(buffer[:n]))
-	lines := strings.Split(message, "\n")
-	if len(lines) == 0 {
-		conn.Write([]byte("Error: empty message"))
-		return
+	command, input, err := parseRequest(message)
+	if err != nil {
+		conn.Write([]byte(fmt.Sprintf("Error: %v", err)))
+		return err
 	}
 
-	// Parse command and input
-	if len(lines) < 1 {
-		conn.Write([]byte("Error: no command provided"))
-		return
+	response, err := forwardToCredHelper(command, input)
+	if err != nil {
+		log.Printf("Credential helper error: %v", err)
 	}
-	command := lines[0] // get, store, erase, list
-	
-	// Handle input based on command type
-	var input string
-	if command == "list" {
-		// list command doesn't need input
-		input = ""
-	} else {
-		// get, store, erase need input
-		if len(lines) != 2 {
-			conn.Write([]byte("Error: command requires input"))
-			return
-		}
-		input = lines[1] // JSON or server URL
-	}
-
-	response, _ := forwardToCredHelper(command, input)
 
 	// Handle "credentials not found" case - return empty for nerdctl compatibility
 	if strings.Contains(response, "credentials not found") {
 		response = ""
-		log.Printf("Credentials not found - returning empty dockertypes.AuthConfig")
+		log.Printf("Credentials not found - returning empty response")
 	} else {
 		log.Printf("Response to VM: %q", response)
 	}
-	log.Println("") // Add space between chunks
 
-	conn.Write([]byte(response))
+	_, writeErr := conn.Write([]byte(response))
+	return writeErr
+}
+
+func parseRequest(message string) (command, input string, err error) {
+	lines := strings.Split(message, "\n")
+	if len(lines) == 0 {
+		return "", "", fmt.Errorf("empty message")
+	}
+
+	if len(lines) < 1 {
+		return "", "", fmt.Errorf("no command provided")
+	}
+
+	command = lines[0]
+	if command == "list" {
+		return command, "", nil
+	}
+
+	if len(lines) != 2 {
+		return "", "", fmt.Errorf("command %s requires input", command)
+	}
+
+	return command, lines[1], nil
+}
+
+func logCredentialStoreInfo() {
+	switch runtime.GOOS {
+	case "darwin":
+		if output, err := exec.Command("security", "list-keychains").CombinedOutput(); err == nil {
+			log.Printf("Available keychains: %s", strings.TrimSpace(string(output)))
+		}
+	case "windows":
+		if output, err := exec.Command("cmdkey", "/list").CombinedOutput(); err == nil {
+			log.Printf("Available credentials: %s", strings.TrimSpace(string(output)))
+		}
+	}
 }
 
 func forwardToCredHelper(command, input string) (string, error) {
 	log.Printf("Forwarding command: %s, input: %s", command, input)
 
-	// Execute docker-credential-osxkeychain with the command
-	cmd := exec.Command("/Users/ayushkp/Documents/finch-creds/finch/_output/bin/cred-helpers/docker-credential-osxkeychain", command)
-	cmd.Stdin = strings.NewReader(input)
+	credHelperPath, err := getCredentialHelperPath()
+	if err != nil {
+		return "", err
+	}
 
-	// Ensure keychain access by inheriting user environment
+	cmd := exec.Command(credHelperPath, command)
+	cmd.Stdin = strings.NewReader(input)
 	cmd.Env = os.Environ()
 
 	output, err := cmd.CombinedOutput()
 	response := strings.TrimSpace(string(output))
 
-	// Log raw output and error details
 	log.Printf("Raw output: %q", string(output))
 	log.Printf("Error: %v", err)
-	log.Printf("Exit code: %v", cmd.ProcessState)
+	if cmd.ProcessState != nil {
+		log.Printf("Exit code: %d", cmd.ProcessState.ExitCode())
+	}
 
 	if err != nil {
-		log.Printf("Credential helper failed - stderr: %s", response)
-		// For get commands, return empty credential helper format
+		log.Printf("Credential helper failed: %s", response)
 		if command == "get" {
 			emptyCreds := credentials.Credentials{ServerURL: input, Username: "", Secret: ""}
 			credsJSON, _ := json.Marshal(emptyCreds)
 			log.Printf("Returning empty credentials: %s", string(credsJSON))
 			return string(credsJSON), nil
 		}
-		return response, nil
+		return response, err
 	}
 
 	log.Printf("Credential helper SUCCESS - response: %s", response)
-
-	// Return the raw response for successful get commands
 	return response, nil
 }
 
-func main() {
-	// Debug log to verify service starts (only to file, not stdout)
-	f, _ := os.OpenFile("/tmp/cred-debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+func getCredentialHelperPath() (string, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		// Try to find the credential helper in common locations
+		possiblePaths := []string{
+			"./docker-credential-osxkeychain",
+			"../_output/bin/cred-helpers/docker-credential-osxkeychain",
+			"/usr/local/bin/docker-credential-osxkeychain",
+		}
+		for _, path := range possiblePaths {
+			if absPath, err := filepath.Abs(path); err == nil {
+				if _, err := os.Stat(absPath); err == nil {
+					return absPath, nil
+				}
+			}
+		}
+		return "", fmt.Errorf("docker-credential-osxkeychain not found")
+	case "windows":
+		return "docker-credential-wincred.exe", nil
+	default:
+		return "", fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+	}
+}
+
+func getLogPath() string {
+	if runtime.GOOS == "windows" {
+		return "C:\\temp\\cred-debug.log"
+	}
+	return "/tmp/cred-debug.log"
+}
+
+func initializeLogging() {
+	logPath := getLogPath()
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Warning: could not open log file %s: %v", logPath, err)
+		return
+	}
+	defer f.Close()
+
 	fmt.Fprintf(f, "=== Credential Helper (inetd mode) ===\n")
-	fmt.Fprintf(f, "Time: %s\n", time.Now().Format("3:04pm"))
+	fmt.Fprintf(f, "Time: %s\n", time.Now().Format(timeFormat))
 	fmt.Fprintf(f, "Service started at %s\n", time.Now())
 	fmt.Fprintf(f, "XPC_SERVICE_NAME: %s\n", os.Getenv("XPC_SERVICE_NAME"))
 	fmt.Fprintf(f, "LAUNCH_DAEMON_SOCKET_NAME: %s\n", os.Getenv("LAUNCH_DAEMON_SOCKET_NAME"))
+}
+
+func main() {
+	initializeLogging()
 
 	// Test if stdin is a network connection (inetd style)
 	if _, err := net.FileConn(os.Stdin); err == nil {
-		fmt.Fprintf(f, "SUCCESS: stdin is a network connection\n")
-		f.Close()
-
-		// Also log to plist location
-		plistLog, _ := os.OpenFile("/Users/ayushkp/Documents/finch-creds/finch/cred-helper.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		fmt.Fprintf(plistLog, "=== Service triggered at %s ===\n", time.Now().Format("3:04pm"))
-		plistLog.Close()
-
-		RunCredScript()
+		log.Printf("SUCCESS: stdin is a network connection")
+		if err := handleCredentialRequest(); err != nil {
+			log.Printf("Error handling credential request: %v", err)
+			os.Exit(1)
+		}
 	} else {
-		fmt.Fprintf(f, "ERROR: stdin is not a network connection: %v\n", err)
-		fmt.Fprintf(f, "Exiting cleanly - this should only run with socket connections\n")
-		f.Close()
-		// Exit cleanly instead of crashing
+		log.Printf("ERROR: stdin is not a network connection: %v", err)
+		log.Printf("Exiting cleanly - this should only run with socket connections")
 		os.Exit(0)
 	}
 }
