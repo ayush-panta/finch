@@ -10,12 +10,15 @@ cd deps/finch-core
 make clean
 cd ../..
 
-Write-Host "📦 Syncing submodules..." -ForegroundColor Yellow
-try {
-    git submodule update --init --recursive
-} catch {
-    Write-Host "Submodule update failed, continuing with existing submodules..." -ForegroundColor Yellow
-}
+Write-Host "📦 Fixing submodule reference..." -ForegroundColor Yellow
+cd deps/finch-core
+git fetch origin
+git reset --hard origin/main
+cd ../..
+git add deps/finch-core
+
+Write-Host "📦 Syncing remaining submodules..." -ForegroundColor Yellow
+git submodule update --init --recursive
 
 Write-Host "🔨 Building everything with make..." -ForegroundColor Yellow
 make
