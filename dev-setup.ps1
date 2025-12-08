@@ -4,6 +4,12 @@ $ErrorActionPreference = "Stop"
 Write-Host "🚀 Finch Windows Development Setup Script" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
+Write-Host "📦 Cleaning up build artifacts..." -ForegroundColor Yellow
+make clean
+cd deps/finch-core
+make clean
+cd ../..
+
 Write-Host "📦 Syncing submodules..." -ForegroundColor Yellow
 git submodule update --init --recursive
 
@@ -25,6 +31,18 @@ if (Test-Path "./_output/bin/finch-cred-bridge") {
 # Write-Host "🔄 Setting up Windows credential bridge service..." -ForegroundColor Yellow
 # & "./_output/bin/finch-cred-bridge.exe" -install
 # & "./_output/bin/finch-cred-bridge.exe" -start
+
+Write-Host "🌐 Configuring WSL networking..." -ForegroundColor Yellow
+@"
+[experimental]
+networkingMode=mirrored
+hostAddressLoopback=true
+"@ | Out-File -FilePath "C:\Users\Administrator\.wslconfig" -Encoding utf8
+
+Write-Host "🧽 Cleaning up WSL and VM state..." -ForegroundColor Yellow
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Users\Administrator\.finch"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Users\Administrator\AppData\Local\.finch"
+./scripts/cleanup_wsl.ps1
 
 Write-Host "🖥️  Initializing VM..." -ForegroundColor Yellow
 & "./_output/bin/finch.exe" vm init
