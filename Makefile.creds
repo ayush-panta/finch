@@ -38,10 +38,17 @@ install-credential-helper:
 
 .PHONY: create-dummy-helper
 create-dummy-helper:
+ifeq ($(BUILD_OS), Windows_NT)
+	mkdir -p "$(USERPROFILE)/.finch/cred-helpers/"
+	echo '#!/bin/bash' > "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+	chmod +x "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+else
 	mkdir -p $(dir $(CRED_HELPER_VM_PATH))
 	echo '#!/bin/bash' > $(CRED_HELPER_VM_PATH)
 	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> $(CRED_HELPER_VM_PATH)
 	chmod +x $(CRED_HELPER_VM_PATH)
+endif
 
 # LaunchAgent plist management (macOS only)
 ifeq ($(BUILD_OS), Darwin)
