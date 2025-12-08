@@ -33,11 +33,8 @@ if (Test-Path "./_output/bin/finch-cred-bridge") {
 # & "./_output/bin/finch-cred-bridge.exe" -start
 
 Write-Host "🌐 Configuring WSL networking..." -ForegroundColor Yellow
-@"
-[experimental]
-networkingMode=mirrored
-hostAddressLoopback=true
-"@ | Out-File -FilePath "C:\Users\Administrator\.wslconfig" -Encoding utf8
+$wslConfig = "[experimental]`nnetworkingMode=mirrored`nhostAddressLoopback=true"
+Set-Content -Path "C:\Users\Administrator\.wslconfig" -Value $wslConfig -Encoding UTF8
 
 Write-Host "🧽 Cleaning up WSL and VM state..." -ForegroundColor Yellow
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Users\Administrator\.finch"
