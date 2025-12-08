@@ -11,7 +11,11 @@ make clean
 cd ../..
 
 Write-Host "📦 Syncing submodules..." -ForegroundColor Yellow
-git submodule update --init --recursive
+try {
+    git submodule update --init --recursive
+} catch {
+    Write-Host "Submodule update failed, continuing with existing submodules..." -ForegroundColor Yellow
+}
 
 Write-Host "🔨 Building everything with make..." -ForegroundColor Yellow
 make
