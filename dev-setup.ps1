@@ -12,6 +12,9 @@ make
 
 # Rename bridge to add .exe extension
 if (Test-Path "./_output/bin/finch-cred-bridge") {
+    if (Test-Path "./_output/bin/finch-cred-bridge.exe") {
+        Remove-Item "./_output/bin/finch-cred-bridge.exe" -Force
+    }
     Rename-Item "./_output/bin/finch-cred-bridge" -NewName "finch-cred-bridge.exe"
 }
 
