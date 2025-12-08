@@ -46,7 +46,11 @@ Set-Content -Path "C:\Users\Administrator\.wslconfig" -Value $wslConfig -Encodin
 Write-Host "🧽 Cleaning up WSL and VM state..." -ForegroundColor Yellow
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Users\Administrator\.finch"
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "C:\Users\Administrator\AppData\Local\.finch"
-./scripts/cleanup_wsl.ps1
+
+# WSL cleanup
+wsl --shutdown
+wsl --unregister lima-finch 2>$null
+Get-Process -Name "wsl*" -ErrorAction SilentlyContinue | Stop-Process -Force
 
 Write-Host "🖥️  Initializing VM..." -ForegroundColor Yellow
 & "./_output/bin/finch.exe" vm init

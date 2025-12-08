@@ -26,6 +26,8 @@ finch-cred-bridge:
 docker-credential-helper:
 ifeq ($(BUILD_OS), Linux)
 	@echo "No credential helper needed for Linux"
+else ifeq ($(BUILD_OS), Windows_NT)
+	@"$(MAKE)" install-credential-helper create-dummy-helper
 else
 	@$(MAKE) install-credential-helper create-dummy-helper
 endif
