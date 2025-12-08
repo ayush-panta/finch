@@ -117,8 +117,10 @@ ifeq ($(BUILD_OS), Darwin)
 		echo "LaunchAgent already loaded"; \
 	fi
 	@echo "Credential bridge setup complete"
+else ifeq ($(BUILD_OS), Windows_NT)
+	@echo "Credential bridge setup for Windows - no additional setup needed"
 else
-	@echo "Credential bridge setup is macOS-specific"
+	@echo "Credential bridge setup not supported on this platform"
 endif
 else
 .PHONY: install-plist uninstall-plist reload-plist
