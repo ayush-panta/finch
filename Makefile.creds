@@ -26,6 +26,8 @@ finch-cred-bridge:
 docker-credential-helper:
 ifeq ($(BUILD_OS), Linux)
 	@echo "No credential helper needed for Linux"
+else ifeq ($(BUILD_OS), Windows_NT)
+	@"$(MAKE)" install-credential-helper create-dummy-helper
 else
 	@$(MAKE) install-credential-helper create-dummy-helper
 endif
@@ -38,10 +40,17 @@ install-credential-helper:
 
 .PHONY: create-dummy-helper
 create-dummy-helper:
+ifeq ($(BUILD_OS), Windows_NT)
+	mkdir -p "$(USERPROFILE)/.finch/cred-helpers/"
+	echo '#!/bin/bash' > "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+	chmod +x "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+else
 	mkdir -p $(dir $(CRED_HELPER_VM_PATH))
 	echo '#!/bin/bash' > $(CRED_HELPER_VM_PATH)
 	echo 'echo "Dummy credential helper - will be replaced by bridge script"' >> $(CRED_HELPER_VM_PATH)
 	chmod +x $(CRED_HELPER_VM_PATH)
+endif
 
 # LaunchAgent plist management (macOS only)
 ifeq ($(BUILD_OS), Darwin)
@@ -110,8 +119,10 @@ ifeq ($(BUILD_OS), Darwin)
 		echo "LaunchAgent already loaded"; \
 	fi
 	@echo "Credential bridge setup complete"
+else ifeq ($(BUILD_OS), Windows_NT)
+	@echo "Credential bridge setup for Windows - no additional setup needed"
 else
-	@echo "Credential bridge setup is macOS-specific"
+	@echo "Credential bridge setup not supported on this platform"
 endif
 else
 .PHONY: install-plist uninstall-plist reload-plist
