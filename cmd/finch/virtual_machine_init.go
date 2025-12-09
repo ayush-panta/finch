@@ -131,7 +131,7 @@ func (iva *initVMAction) run() error {
 		// Install credential helper launchd service
 		plistSrc := filepath.Join(os.Getenv("HOME"), "Documents/finch-creds/finch/cmd/finch/cred-helper/Info.plist")
 		plistDst := filepath.Join(os.Getenv("HOME"), "Library/LaunchAgents/com.runfinch.credhelper.plist")
-		
+
 		// Copy plist file
 		cpCmd := exec.Command("cp", plistSrc, plistDst)
 		if err := cpCmd.Run(); err != nil {
