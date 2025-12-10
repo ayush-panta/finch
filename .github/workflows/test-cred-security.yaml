@@ -1,0 +1,55 @@
+name: test-cred-security
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+
+# concern is
+jobs:
+  macos-keychain:
+    runs-on:
+    steps:
+
+      # set up workspace (clean, dependencies, etc) {will have to specify for ec2 user}
+      # check out mainline finch repo, defaulting to PR branch..
+      # make finch, initialize the VM properly...
+      # create a private repository locally with a specified user/pass
+      # check:
+        # was the configuration set up to refer to the thing?
+        # is the credential helper binary installed where expected?
+      # standard tests:
+        # 1. can we pull a public image, of course should be able to
+        # 2. can we nicely login to the local registry
+          # check for credentials in the config, should be nothing plaintext
+          # enumerate the credstore using the docker-credential-helper
+        # 3. Check that we can push/pull from the private registry
+        # 4. Checkt hat we can still pull public image
+        # 5. Check that we can log out from the registry
+        # 6. With clean system, ensure we can no longer access the registry
+
+      # permissions tests:
+        # loading credentials as userA, can we see them as userB?
+        # what happens if user B prompts the socket?
+        # what happens if user B is in Lima and prompts?
+        # etc. etc..
+
+      - name: 
+        run : |
+
+
+
+
+
+
+  windows-cred-manager:
+    runs-on:
+    steps:
+
