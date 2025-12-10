@@ -263,6 +263,8 @@ download-licenses:
 
 	mkdir -p "$(LICENSEDIR)/github.com/lima-vm/lima"
 	curl https://raw.githubusercontent.com/lima-vm/lima/master/LICENSE --output "$(LICENSEDIR)/github.com/lima-vm/lima/LICENSE"
+	mkdir -p "$(LICENSEDIR)/github.com/docker/docker-credential-helpers"
+	curl https://raw.githubusercontent.com/docker/docker-credential-helpers/master/LICENSE --output "$(LICENSEDIR)/github.com/docker/docker-credential-helpers/LICENSE"
 
     ### system-level dependencies - end ###
 
