@@ -98,18 +98,26 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 	}
 
-	configureCredHelperTemplate := fmt.Sprintf(`[ -x /usr/local/bin/docker-credential-%%s ] || (
-echo "Creating credential helper script for %%s" && \
-sudo tee /usr/local/bin/docker-credential-%%s > /dev/null << 'CREDEOF'
-%s
-CREDEOF
-sudo chmod +x /usr/local/bin/docker-credential-%%s
-)`, credHelperScript)
-
 	for _, credHelper := range fc.CredsHelpers {
 		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
-		// Create VM-side debug script that logs everything
-		cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+
+		// Check if this is OS native credential store
+		if credHelper == "osxkeychain" || credHelper == "wincred" {
+			// Native OS credstore - create wrapper script
+			cmdArr = append(cmdArr, fmt.Sprintf(`[ -x /usr/local/bin/docker-credential-%s ] || (
+echo "Creating native credential wrapper for %s" && \
+sudo mkdir -p /usr/local/bin && \
+echo '#!/bin/bash' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null && \
+echo 'response=$(printf "%%s\n%%s\n" "$1" "$(cat)" | socat - UNIX-CONNECT:/tmp/finch-creds.sock)' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
+echo 'echo "$response"' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
+sudo chmod +x /usr/local/bin/docker-credential-%s
+)`, credHelper, credHelper, credHelper, credHelper, credHelper, credHelper))
+		} else {
+			// Mainline behavior for third-party helpers (ecr-login, etc)
+			cmdArr = append(cmdArr, fmt.Sprintf(`([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
+  (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
+  ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`, credHelper, credHelper, credHelper, credHelper))
+		}
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)
