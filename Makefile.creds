@@ -1,21 +1,30 @@
-# Credential helper configuration
-CRED_HELPER_VERSION ?= v0.9.4
-CRED_HELPER_BASE_URL := https://github.com/docker/docker-credential-helpers/releases/download/$(CRED_HELPER_VERSION)
+CRED_HELPER_BASE_URL := https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4
 
-# Platform-specific credential helper names and architectures
+DARWIN_ARM64_ARTIFACT := docker-credential-osxkeychain-v0.9.4.darwin-arm64
+DARWIN_ARM64_256_DIGEST := 8db5b7cbcbe0870276e56aa416416161785e450708af64cda0f1be4c392dc2e5
+
+DARWIN_AMD64_ARTIFACT := docker-credential-osxkeychain-v0.9.4.darwin-amd64
+DARWIN_AMD64_256_DIGEST := ad76d1a1e03def49edfa57fdb2874adf2c468cfa0438aae1b2589434796f7c01
+
+WINDOWS_ARM64_ARTIFACT := docker-credential-wincred-v0.9.4.windows-arm64.exe
+WINDOWS_ARM64_256_DIGEST := 80a6ddbbabc51a8952308acf4d03c044308357cf217300461c44df066c57fe03
+
+WINDOWS_AMD64_ARTIFACT := docker-credential-wincred-v0.9.4.windows-amd64.exe
+WINDOWS_AMD64_256_DIGEST := 66fdf4b50c83aeb04a9ea04af960abaf1a7b739ab263115f956b98bb0d16aa7e
+
+# Platform-specific credential helper configuration
 ifeq ($(BUILD_OS), Darwin)
+CRED_HELPER_ARTIFACT := $(if $(findstring arm64,$(ARCH)),$(DARWIN_ARM64_ARTIFACT),$(DARWIN_AMD64_ARTIFACT))
+CRED_HELPER_DIGEST := $(if $(findstring arm64,$(ARCH)),$(DARWIN_ARM64_256_DIGEST),$(DARWIN_AMD64_256_DIGEST))
 CRED_HELPER_NAME := docker-credential-osxkeychain
-CRED_HELPER_ARCH := $(if $(findstring arm64,$(ARCH)),darwin-arm64,darwin-amd64)
-CRED_HELPER_EXT := 
 else ifeq ($(BUILD_OS), Windows_NT)
+CRED_HELPER_ARTIFACT := $(if $(findstring arm64,$(ARCH)),$(WINDOWS_ARM64_ARTIFACT),$(WINDOWS_AMD64_ARTIFACT))
+CRED_HELPER_DIGEST := $(if $(findstring arm64,$(ARCH)),$(WINDOWS_ARM64_256_DIGEST),$(WINDOWS_AMD64_256_DIGEST))
 CRED_HELPER_NAME := docker-credential-wincred
-CRED_HELPER_ARCH := windows-amd64
-CRED_HELPER_EXT := .exe
 endif
 
-# Credential helper URLs
-CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_NAME)-$(CRED_HELPER_VERSION).$(CRED_HELPER_ARCH)$(CRED_HELPER_EXT)
-CRED_HELPER_OUTPUT := $(OUTDIR)/bin/cred-helpers/$(CRED_HELPER_NAME)$(CRED_HELPER_EXT)
+CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_ARTIFACT)
+CRED_HELPER_OUTPUT := $(OUTDIR)/bin/cred-helpers/$(CRED_HELPER_NAME)$(if $(findstring .exe,$(CRED_HELPER_ARTIFACT)),.exe,)
 CRED_HELPER_VM_PATH := ~/.finch/cred-helpers/$(CRED_HELPER_NAME)
 
 .PHONY: finch-cred-bridge
@@ -36,6 +45,12 @@ endif
 install-credential-helper:
 	mkdir -p $(dir $(CRED_HELPER_OUTPUT))
 	curl -L $(CRED_HELPER_URL) -o $(CRED_HELPER_OUTPUT)
+	@echo "Verifying SHA256 checksum..."
+	@if echo "$(CRED_HELPER_DIGEST)  $(CRED_HELPER_OUTPUT)" | $(if $(findstring Darwin,$(BUILD_OS)),shasum -a 256,sha256sum) -c -; then \
+		echo "Checksum verification passed"; \
+	else \
+		echo "Checksum verification failed" && exit 1; \
+	fi
 	chmod +x $(CRED_HELPER_OUTPUT)
 
 .PHONY: create-dummy-helper
