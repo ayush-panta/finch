@@ -16,10 +16,11 @@ echo "🔨 Building finch..."
 make
 
 echo "🧹 Cleaning credential helper log..."
-rm -f ~/.finch/cred-helper.log
+rm -f _output/finch-credhelper/cred-bridge.log
 
 echo "🔄 Reloading credential helper service..."
 launchctl unload ~/Library/LaunchAgents/com.runfinch.cred-bridge.plist 2>/dev/null || true
+cp cmd/finch-credhelper/com.runfinch.cred-bridge.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.runfinch.cred-bridge.plist
 
 echo "🖥️  Initializing VM..."
@@ -27,5 +28,4 @@ echo "🖥️  Initializing VM..."
 
 echo "✅ Setup complete!"
 echo "📝 Credential helper will be managed by launchd"
-echo "🔍 To view logs: tail -f ~/Documents/finch-creds/finch/cred-helper.log"
-echo "🧪 To test socket: echo -e 'erase\nhttps://index.docker.io/v1/' | nc -U ~/.finch/creds.sock"
+echo "🔍 To view logs: tail -f _output/finch-credhelper/cred-bridge.log"

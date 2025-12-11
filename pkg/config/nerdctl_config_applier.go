@@ -108,7 +108,7 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 echo "Creating native credential wrapper for %s" && \
 sudo mkdir -p /usr/local/bin && \
 echo '#!/bin/bash' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null && \
-echo 'response=$(printf "%%s\n%%s\n" "$1" "$(cat)" | socat - UNIX-CONNECT:/tmp/finch-creds.sock)' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
+echo 'response=$(printf "%%s\n%%s\n" "$1" "$(cat)" | socat - UNIX-CONNECT:/run/finch-creds.sock)' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
 echo 'echo "$response"' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
 sudo chmod +x /usr/local/bin/docker-credential-%s
 )`, credHelper, credHelper, credHelper, credHelper, credHelper, credHelper))
