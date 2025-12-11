@@ -10,7 +10,7 @@
     <array>
         <string>/bin/sh</string>
         <string>-c</string>
-        <string>exec /Applications/Finch/bin/finch-cred-bridge</string>
+        <string>exec /Users/ayushkp/Documents/finch-creds/finch/_output/finch-credhelper/finch-cred-bridge</string>
     </array>
 
     <key>Sockets</key>
@@ -19,7 +19,7 @@
         <array>
             <dict>
                 <key>SockPathName</key>
-                <string>/Users/ayushkp/.finch/creds.sock</string>
+                <string>/Users/ayushkp/Documents/finch-creds/finch/_output/finch-credhelper/creds.sock</string>
                 <key>SockPathMode</key>
                 <integer>384</integer>
             </dict>

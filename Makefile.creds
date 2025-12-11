@@ -30,7 +30,7 @@ CRED_HELPER_VM_PATH := ~/.finch/cred-helpers/$(CRED_HELPER_NAME)
 .PHONY: finch-cred-bridge
 finch-cred-bridge:
 	mkdir -p $(OUTDIR)/finch-credhelper
-	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/finch-credhelper/finch-cred-bridge $(PACKAGE)/cmd/finch-cred-bridge
+	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/finch-credhelper/finch-cred-bridge $(PACKAGE)/cmd/finch-credhelper
 
 .PHONY: docker-credential-helper
 docker-credential-helper:
@@ -71,8 +71,8 @@ endif
 # LaunchAgent plist management (macOS only)
 ifeq ($(BUILD_OS), Darwin)
 PLIST_NAME := com.runfinch.cred-bridge.plist
-PLIST_SOURCE := cmd/finch-cred-bridge/$(PLIST_NAME)
-PLIST_TEMPLATE := cmd/finch-cred-bridge/$(PLIST_NAME).template
+PLIST_SOURCE := cmd/finch-credhelper/$(PLIST_NAME)
+PLIST_TEMPLATE := cmd/finch-credhelper/$(PLIST_NAME).template
 PLIST_DEST := $(HOME)/Library/LaunchAgents/$(PLIST_NAME)
 
 .PHONY: generate-plist
