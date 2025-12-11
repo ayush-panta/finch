@@ -139,27 +139,47 @@ func forwardToCredHelper(command, input string) (string, error) {
 }
 
 func getCredentialHelperPath() (string, error) {
+	var helperName string
 	switch runtime.GOOS {
 	case "darwin":
-		// Try to find the credential helper in common locations
-		possiblePaths := []string{
-			"./docker-credential-osxkeychain",
-			"../_output/bin/cred-helpers/docker-credential-osxkeychain",
-			"/usr/local/bin/docker-credential-osxkeychain",
-		}
-		for _, path := range possiblePaths {
-			if absPath, err := filepath.Abs(path); err == nil {
-				if _, err := os.Stat(absPath); err == nil {
-					return absPath, nil
-				}
-			}
-		}
-		return "", fmt.Errorf("docker-credential-osxkeychain not found")
+		helperName = "docker-credential-osxkeychain"
 	case "windows":
-		return "docker-credential-wincred.exe", nil
+		helperName = "docker-credential-wincred.exe"
 	default:
 		return "", fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
+
+	// Runtime path detection: find helper relative to bridge executable
+	// This works for both dev (_output/finch-credhelper/) and prod (/Applications/Finch/finch-credhelper/)
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Helper should be in same directory as bridge
+	baseDir := filepath.Dir(execPath)
+	helperPath := filepath.Join(baseDir, helperName)
+
+	// Verify helper exists
+	if _, err := os.Stat(helperPath); err == nil {
+		log.Printf("Found credential helper at: %s", helperPath)
+		return helperPath, nil
+	}
+
+	// Fallback: try common system locations for compatibility
+	fallbackPaths := []string{
+		"/usr/local/bin/" + helperName,
+		"/Applications/Finch/bin/" + helperName,
+	}
+
+	for _, path := range fallbackPaths {
+		if _, err := os.Stat(path); err == nil {
+			log.Printf("Found credential helper at fallback location: %s", path)
+			return path, nil
+		}
+	}
+
+	return "", fmt.Errorf("%s not found in same directory (%s) or fallback locations", helperName, baseDir)
 }
 
 func getLogPath() string {

@@ -10,7 +10,7 @@
     <array>
         <string>/bin/sh</string>
         <string>-c</string>
-        <string>exec /Applications/Finch/bin/finch-cred-bridge</string>
+        <string>exec $FINCH_CRED_BRIDGE_PATH</string>
     </array>
 
     <key>Sockets</key>

@@ -24,12 +24,13 @@ CRED_HELPER_NAME := docker-credential-wincred
 endif
 
 CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_ARTIFACT)
-CRED_HELPER_OUTPUT := $(OUTDIR)/bin/cred-helpers/$(CRED_HELPER_NAME)$(if $(findstring .exe,$(CRED_HELPER_ARTIFACT)),.exe,)
+CRED_HELPER_OUTPUT := $(OUTDIR)/finch-credhelper/$(CRED_HELPER_NAME)$(if $(findstring .exe,$(CRED_HELPER_ARTIFACT)),.exe,)
 CRED_HELPER_VM_PATH := ~/.finch/cred-helpers/$(CRED_HELPER_NAME)
 
 .PHONY: finch-cred-bridge
 finch-cred-bridge:
-	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/finch-cred-bridge $(PACKAGE)/cmd/finch-cred-bridge
+	mkdir -p $(OUTDIR)/finch-credhelper
+	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/finch-credhelper/finch-cred-bridge $(PACKAGE)/cmd/finch-cred-bridge
 
 .PHONY: docker-credential-helper
 docker-credential-helper:
@@ -79,6 +80,7 @@ generate-plist:
 	@echo "Generating plist with current paths..."
 	sed -e "s|\$$HOME|$(HOME)|g" \
 	    -e "s|\$$USER|$(USER)|g" \
+	    -e "s|\$$FINCH_CRED_BRIDGE_PATH|$(CURDIR)/_output/finch-credhelper/finch-cred-bridge|g" \
 	    $(PLIST_TEMPLATE) > $(PLIST_SOURCE)
 
 .PHONY: install-plist
