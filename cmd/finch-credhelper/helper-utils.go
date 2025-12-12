@@ -89,3 +89,38 @@ func getCredentialHelperPath() (string, error) {
 	}
 	return path, nil
 }
+
+// Core credential processing logic - shared across platforms
+func processCredentialRequest(conn interface{ Read([]byte) (int, error); Write([]byte) (int, error) }) error {
+	// read from buffer
+	buffer := make([]byte, maxBufferSize)
+	data, err := conn.Read(buffer)
+	if err != nil {
+		return fmt.Errorf("ERROR: read error: %w", err)
+	}
+
+	// parse request
+	request := strings.TrimSpace(string(buffer[:data]))
+	command, input, err := parseCredstoreRequest(request)
+	if err != nil {
+		return fmt.Errorf("ERROR: %w", err)
+	}
+
+	// forward and handle request
+	response, err := forwardToCredHelper(command, input)
+	if err != nil {
+		log.Printf("Credential helper error: %v", err)
+	}
+
+	// handle credential not found
+	if strings.Contains(response, "credentials not found") {
+		response = ""
+		log.Printf("Credentials not found - returning empty response")
+	} else {
+		log.Printf("Response to VM: %q", response)
+	}
+
+	// write back to connection
+	_, writeErr := conn.Write([]byte(response))
+	return writeErr
+}

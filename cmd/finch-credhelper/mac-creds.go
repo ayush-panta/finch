@@ -10,9 +10,8 @@ import (
 	"strings"
 )
 
-// no return as calls back to socket
+// macOS socket activation handler
 func handleCredstoreRequest() error {
-
 	// connect to socket, defer close til after return
 	conn, err := net.FileConn(os.Stdin)
 	if err != nil {
@@ -20,37 +19,8 @@ func handleCredstoreRequest() error {
 	}
 	defer conn.Close()
 
-	// read from buffer
-	buffer := make([]byte, maxBufferSize)
-	data, err := conn.Read(buffer)
-	if err != nil {
-		return fmt.Errorf("ERROR:	 read error: %w", err)
-	}
-
-	// parse request
-	request := strings.TrimSpace(string(buffer[:data]))
-	command, input, err := parseCredstoreRequest(request)
-	if err != nil {
-		return fmt.Errorf("ERROR: %w", err)
-	}
-
-	// forward and handle request
-	response, err := forwardToCredHelper(command, input)
-	if err != nil {
-		log.Printf("Credential helper error: %v", err)
-	}
-
-	// hmm... some cred handling here.
-	if strings.Contains(response, "credentials not found") {
-		response = ""
-		log.Printf("Credentials not found - returning empty response")
-	} else {
-		log.Printf("Response to VM: %q", response)
-	}
-
-	// write back to socket, and return err if exists
-	_, writeErr := conn.Write([]byte(response))
-	return writeErr
+	// use shared credential processing logic
+	return processCredentialRequest(conn)
 }
 
 func darwinKeychainHandler() {

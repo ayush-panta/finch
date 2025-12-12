@@ -2,6 +2,6 @@ vmType: wsl2
 mountType: wsl2
 
 portForwards:
-- guestSocket: "/tmp/finch-creds.sock"
-  hostSocket: "{{.Home}}/.finch/creds.sock"
+- guestSocket: "/tmp/native-creds.sock"
+  hostSocket: "{{.Home}}/Documents/finch-creds/finch/_output/finch-credhelper/native-creds.sock"
   reverse: true
