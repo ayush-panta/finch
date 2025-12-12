@@ -79,7 +79,11 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
+ifeq ($(BUILD_OS), Windows_NT)
+remote-all: arch-test finch finch-cred-bridge docker-credential-helper install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+else
 remote-all: arch-test finch finch-cred-bridge docker-credential-helper install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service setup-cred-bridge
+endif
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
