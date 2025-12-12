@@ -18,6 +18,7 @@ $env:GOSUMDB = ""
 Write-Host "🧽 Skipping make clean (submodule issues)..." -ForegroundColor Yellow
 
 Write-Host "🔨 Building finch..." -ForegroundColor Green
+make clean
 make
 
 # Check if build succeeded
