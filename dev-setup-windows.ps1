@@ -49,8 +49,16 @@ if (Test-Path "_output/bin/finch-credhelper.exe") {
     Write-Host "⚠️  Credential helper not built - skipping setup" -ForegroundColor Yellow
 }
 
-Write-Host "🖥️  Initializing VM..." -ForegroundColor Green
-& ".\_output\bin\finch.exe" vm init
+Write-Host "🖥️  Initializing VM (this may take a few minutes)..." -ForegroundColor Green
+$initResult = Start-Process -FilePath "./_output/bin/finch.exe" -ArgumentList "vm", "init" -Wait -PassThru
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✅ VM initialized successfully!" -ForegroundColor Green
+} else {
+    Write-Host "❌ VM initialization failed" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "🔍 Checking VM status..." -ForegroundColor Green
+Start-Process -FilePath "./_output/bin/finch.exe" -ArgumentList "vm", "status" -Wait -NoNewWindow
 
 Write-Host "✅ Setup complete!" -ForegroundColor Green
-Write-Host "🔍 To check VM status: & './_output/bin/finch.exe' vm status" -ForegroundColor Yellow
