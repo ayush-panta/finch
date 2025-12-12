@@ -19,6 +19,17 @@ const (
 	maxBufferSize = 4096
 )
 
+
+// windows extensibility
+// services.msc 
+	// "It runs irrespective of which user account it's running in.
+	//  It's lifecycle (start, stop, pause, continue etc.,) are controlled by a program called Service Control Manager (SCM)."
+	
+// will differ in the sense that isntead of socket activiation, it will constantly listen (super lightweight server that cannot be accessed from anything but sock)
+// start with sc.exe
+
+
+
 // no return as calls back to socket
 func handleCredstoreRequest() error {
 
@@ -27,13 +38,13 @@ func handleCredstoreRequest() error {
 	if err != nil {
 		return fmt.Errorf("ERROR: failed to get connection from stdin: %w", err)
 	}
-	defer c.Close()
+	defer conn.Close()
 
 	// read from buffer
 	buffer := make([]byte, maxBufferSize)
-	data, err := c.Read(buffer)
+	data, err := conn.Read(buffer)
 	if err != nil {
-		return fmt.Errorf("ERROR: read error: %w", err)
+		return fmt.Errorf("ERROR:	 read error: %w", err)
 	}
 
 	// parse request
@@ -128,7 +139,7 @@ func getCredentialHelperPath() (string, error) {
 	}
 
 	path := filepath.Join(os.Getenv("HOME"), ".finch", "cred-helpers", helperName)
-	_, err = os.Stat(path)
+	_, err := os.Stat(path)
 	if err != nil {
 		return "", fmt.Errorf("ERROR: %s not found", helperName)
 	}
@@ -139,7 +150,7 @@ func main() {
 
 	// Test if stdin is a network connection (inetd style)
 	if _, err := net.FileConn(os.Stdin); err == nil {
-		if err := handleCredentialRequest(); err != nil {
+		if err := handleCredstoreRequest(); err != nil {
 			os.Exit(1)
 		}
 	} else {
