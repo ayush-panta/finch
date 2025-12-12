@@ -3,17 +3,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
-
-	"github.com/docker/docker-credential-helpers/credentials"
 )
 
 // no return as calls back to socket
@@ -68,4 +62,8 @@ func darwinKeychainHandler() {
 	} else {
 		os.Exit(0)
 	}
+}
+
+func main() {
+	darwinKeychainHandler()
 }
