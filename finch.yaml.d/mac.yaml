@@ -7,6 +7,9 @@ provision:
   - mode: boot
     script: |
       modprobe virtiofs
+  - mode: boot
+    script: |
+      dnf install -y socat
   # port this to common.yaml after windows socket forwarding is added
   - mode: user
     script: |
@@ -57,6 +60,6 @@ hostResolver:
 portForwards:
 - guestSocket: "/run/finch.sock"
   hostSocket: "{{.Dir}}/sock/finch.sock"
-- guestSocket: "/run/finch-creds.sock"
+- guestSocket: "/tmp/native-creds.sock"
   hostSocket: "{{.Home}}/Documents/finch-creds/finch/_output/finch-credhelper/creds.sock"
   reverse: true
