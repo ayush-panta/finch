@@ -36,5 +36,5 @@ Write-Host "🖥️  Initializing VM..." -ForegroundColor Green
 Write-Host "✅ Setup complete!" -ForegroundColor Green
 Write-Host "📝 Credential helper binary located at: $credHelperDir\finch-credhelper.exe" -ForegroundColor Yellow
 Write-Host "🔧 To run credential helper manually:" -ForegroundColor Yellow
-Write-Host "   & '$credHelperDir\finch-credhelper.exe'" -ForegroundColor Cyan
+Write-Host "   `& '$credHelperDir\finch-credhelper.exe'" -ForegroundColor Cyan
 Write-Host "🔍 To view logs: Get-Content _output\finch-credhelper\cred-bridge.log -Wait" -ForegroundColor Yellow
