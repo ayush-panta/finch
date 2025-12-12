@@ -19,7 +19,7 @@
         <array>
             <dict>
                 <key>SockPathName</key>
-                <string>$HOME/.finch/creds.sock</string>
+                <string>$HOME/Documents/finch-creds/finch/_output/finch-credhelper/native-creds.sock</string>
                 <key>SockPathMode</key>
                 <integer>384</integer>
             </dict>

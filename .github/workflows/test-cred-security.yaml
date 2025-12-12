@@ -35,6 +35,8 @@ jobs:
         # 5. Check that we can log out from the registry
         # 6. With clean system, ensure we can no longer access the registry
 
+      # can docker with finch socket still use a basic credstore?
+
       # permissions tests:
         # loading credentials as userA, can we see them as userB?
         # what happens if user B prompts the socket?
