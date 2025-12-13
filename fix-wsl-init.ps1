@@ -8,11 +8,12 @@ wsl --set-default-version 2
 
 # Clean up any existing lima-finch distro
 Write-Host "Cleaning up existing WSL distros..." -ForegroundColor Green
-$existingDistros = wsl --list --quiet 2>$null | Where-Object { $_ -match "lima-finch" }
-foreach ($distro in $existingDistros) {
-    if ($distro.Trim()) {
-        Write-Host "  Unregistering: $($distro.Trim())" -ForegroundColor Cyan
-        wsl --unregister $distro.Trim() 2>$null
+$wslList = wsl --list --quiet 2>$null
+foreach ($line in $wslList) {
+    $distro = $line.Trim()
+    if ($distro -and ($distro -like "*lima-finch*" -or $distro -eq "lima-finch")) {
+        Write-Host "  Unregistering: $distro" -ForegroundColor Cyan
+        wsl --unregister $distro 2>$null
     }
 }
 
