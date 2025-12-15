@@ -85,3 +85,13 @@ else
 install-launch-agent uninstall-launch-agent setup-cred-bridge:
 	@echo "LaunchAgent management is macOS-specific"
 endif
+
+.PHONY: make-creds
+ifeq ($(BUILD_OS), Linux)
+make-creds:
+	@echo "No credential helpers needed for Linux"
+else ifeq ($(BUILD_OS), Windows_NT)
+make-creds: finch-cred-bridge docker-credential-helper
+else
+make-creds: finch-cred-bridge docker-credential-helper setup-cred-bridge
+endif
