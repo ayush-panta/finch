@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,63 +13,64 @@ import (
 )
 
 const (
-	maxBufferSize = 4096
+    MaxBufferSize = 4096
+    CredHelpersDir = "cred-helpers"
+    FinchConfigDir = ".finch"
 )
 
-func parseCredstoreRequest(request string) (command, input string, err error) {
-
-	lines := strings.Split(request, "\n")
-	if len(lines) == 0 {
-		return "", "", fmt.Errorf("ERROR: Empty request.")
-	}
-
-	command = lines[0]
-	if command == "list" { // too keep or not to keep?
-		return command, "", nil
-	}
-	if len(lines) != 2 {
-		return "", "", fmt.Errorf("ERROR: command %s requires input", command)
-	}
-
-	return command, lines[1], nil
+var credentialHelperNames = map[string]string{
+    "darwin":  "docker-credential-osxkeychain",
+    "windows": "docker-credential-wincred.exe",
 }
 
-func forwardToCredHelper(command, input string) (string, error) {
-	log.Printf("Forwarding command: %s, input: %s", command, input)
+// requests come in as "{command}\n{json}"
+func parseCredstoreRequest(request string) (command, input string, err error) {
+	lines := strings.Split(strings.TrimSpace(request), "\n")
+	if len(lines) == 0 {
+		return "", "", fmt.Errorf("empty request")
+	}
 
+	command = strings.TrimSpace(lines[0])
+	if command == "list" {
+		return command, "", nil
+	}
+	if len(lines) < 2 {
+		return "", "", fmt.Errorf("command %s requires input", command)
+	}
+
+	return command, strings.TrimSpace(lines[1]), nil
+}
+
+// invokes the platform-specific credential helper
+func executeCredentialHelper(command, input string) (string, error) {
 	credHelperPath, err := getCredentialHelperPath()
 	if err != nil {
 		return "", err
 	}
 
 	cmd := exec.Command(credHelperPath, command)
-	cmd.Stdin = strings.NewReader(input)
+	if input != "" {
+		cmd.Stdin = strings.NewReader(input)
+	}
 	cmd.Env = os.Environ()
 
 	output, err := cmd.CombinedOutput()
 	response := strings.TrimSpace(string(output))
 
-	log.Printf("Raw output: %q", string(output))
-	log.Printf("Error: %v", err)
-	if cmd.ProcessState != nil {
-		log.Printf("Exit code: %d", cmd.ProcessState.ExitCode())
-	}
-
 	if err != nil {
-		log.Printf("Credential helper failed: %s", response)
 		if command == "get" {
+			// Return empty credentials for failed get operations
 			emptyCreds := credentials.Credentials{ServerURL: input, Username: "", Secret: ""}
 			credsJSON, _ := json.Marshal(emptyCreds)
-			log.Printf("Returning empty credentials: %s", string(credsJSON))
 			return string(credsJSON), nil
 		}
-		return response, err
+		return "", fmt.Errorf("credential helper failed: %w", err)
 	}
 
-	log.Printf("Credential helper SUCCESS - response: %s", response)
 	return response, nil
 }
 
+// get the name of the credhelper...
 func getCredentialHelperPath() (string, error) {
 	var helperName string
 	switch runtime.GOOS {
@@ -79,48 +79,48 @@ func getCredentialHelperPath() (string, error) {
 	case "windows":
 		helperName = "docker-credential-wincred.exe"
 	default:
-		return "", fmt.Errorf("unsupported platform: %s", runtime.GOOS) // ?
+		return "", fmt.Errorf("credential helper not supported on %s", runtime.GOOS)
 	}
 
-	path := filepath.Join(os.Getenv("HOME"), ".finch", "cred-helpers", helperName)
-	_, err := os.Stat(path)
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("ERROR: %s not found", helperName)
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	path := filepath.Join(homeDir, ".finch", "cred-helpers", helperName)
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf("credential helper %s not found at %s", helperName, path)
 	}
 	return path, nil
 }
 
-// Core credential processing logic - shared across platforms
+// processCredentialRequest handles credential requests from the VM
 func processCredentialRequest(conn interface{ Read([]byte) (int, error); Write([]byte) (int, error) }) error {
-	// read from buffer
+	const maxBufferSize = 4096
+	
 	buffer := make([]byte, maxBufferSize)
-	data, err := conn.Read(buffer)
+	n, err := conn.Read(buffer)
 	if err != nil {
-		return fmt.Errorf("ERROR: read error: %w", err)
+		return fmt.Errorf("failed to read request: %w", err)
 	}
 
-	// parse request
-	request := strings.TrimSpace(string(buffer[:data]))
+	request := strings.TrimSpace(string(buffer[:n]))
 	command, input, err := parseCredstoreRequest(request)
 	if err != nil {
-		return fmt.Errorf("ERROR: %w", err)
+		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	// forward and handle request
-	response, err := forwardToCredHelper(command, input)
+	response, err := executeCredentialHelper(command, input)
 	if err != nil {
-		log.Printf("Credential helper error: %v", err)
+		// For failed operations, return empty response instead of error
+		response = ""
 	}
 
-	// handle credential not found
+	// Handle credential not found cases
 	if strings.Contains(response, "credentials not found") {
 		response = ""
-		log.Printf("Credentials not found - returning empty response")
-	} else {
-		log.Printf("Response to VM: %q", response)
 	}
 
-	// write back to connection
-	_, writeErr := conn.Write([]byte(response))
-	return writeErr
+	_, err = conn.Write([]byte(response))
+	return err
 }
