@@ -7,9 +7,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
 
 	"github.com/runfinch/finch/pkg/disk"

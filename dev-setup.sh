@@ -21,12 +21,6 @@ make
 echo "🧹 Cleaning credential helper log..."
 rm -f _output/finch-credhelper/cred-bridge.log
 
-echo "🔄 Reloading credential helper service..."
-launchctl unload ~/Library/LaunchAgents/com.runfinch.cred-bridge.plist 2>/dev/null || true
-make generate-plist
-cp cmd/finch-credhelper/com.runfinch.cred-bridge.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.runfinch.cred-bridge.plist
-
 echo "🖥️  Initializing VM..."
 ./_output/bin/finch vm init
 
