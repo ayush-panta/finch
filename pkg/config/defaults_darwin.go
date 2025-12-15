@@ -59,7 +59,6 @@ func cpuDefault(cfg *Finch, deps LoadSystemDeps) {
 	}
 }
 
-// Different because the other defaults use single values; this uses a slice
 func credHelperDefault(cfg *Finch) {
 	if cfg.CredsHelpers == nil || len(cfg.CredsHelpers) == 0 {
 		cfg.CredsHelpers = []string{"osxkeychain"}

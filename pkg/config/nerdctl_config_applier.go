@@ -6,7 +6,6 @@
 package config
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"path"
@@ -26,8 +25,11 @@ const (
 	nerdctlRootfulCfgPath = "/etc/nerdctl/nerdctl.toml"
 )
 
-//go:embed cred-helper-overwrite.sh
-var credHelperScript string
+// Native credential helper wrapper script
+const nativeCredHelperScript = `#!/bin/bash
+input=$(cat)
+printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:/tmp/native-creds.sock
+`
 
 type nerdctlConfigApplier struct {
 	dialer           fssh.Dialer
@@ -98,25 +100,26 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 	}
 
+	//nolint:gosec // G101: Potential hardcoded credentials false positive
+	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
+  (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
+  ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
+
+	//nolint:gosec // G101: Potential hardcoded credentials false positive
+	const nativeCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
+  (sudo mkdir -p /usr/local/bin) && \
+  (echo '%s' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null) && \
+  (sudo chmod +x /usr/local/bin/docker-credential-%s))`
+
 	for _, credHelper := range fc.CredsHelpers {
+		// Add the credhelper to config by default, removes need for user to add
 		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
 
-		// Check if this is OS native credential store
+		// If using native credstore, use overwrite instead of symlink
 		if credHelper == "osxkeychain" || credHelper == "wincred" {
-			// Native OS credstore - create wrapper script
-			cmdArr = append(cmdArr, fmt.Sprintf(`[ -x /usr/local/bin/docker-credential-%s ] || (
-echo "Creating native credential wrapper for %s" && \
-sudo mkdir -p /usr/local/bin && \
-echo '#!/bin/bash' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null && \
-echo 'response=$(printf "%%s\n%%s\n" "$1" "$(cat)" | socat - UNIX-CONNECT:/tmp/native-creds.sock)' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
-echo 'echo "$response"' | sudo tee -a /usr/local/bin/docker-credential-%s > /dev/null && \
-sudo chmod +x /usr/local/bin/docker-credential-%s
-)`, credHelper, credHelper, credHelper, credHelper, credHelper, credHelper))
+			cmdArr = append(cmdArr, fmt.Sprintf(nativeCredHelperTemplate, credHelper, nativeCredHelperScript, credHelper, credHelper))
 		} else {
-			// Mainline behavior for third-party helpers (ecr-login, etc)
-			cmdArr = append(cmdArr, fmt.Sprintf(`([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
-  (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
-  ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`, credHelper, credHelper, credHelper, credHelper))
+			cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
 		}
 	}
 
@@ -266,6 +269,5 @@ func (nca *nerdctlConfigApplier) Apply(remoteAddr string) error {
 	if err := updateEnvironment(sftpFs, nca.fc, nca.finchDir, nca.homeDir, limaHomeDir); err != nil {
 		return fmt.Errorf("failed to update the user's .profile file: %w", err)
 	}
-
 	return nil
 }
