@@ -1,0 +1,130 @@
+name: test-cred-security
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  GO_VERSION: '1.24.6'
+
+jobs:
+  macos-keychain:
+    runs-on: ["self-hosted", "macos", "arm64", "14", "test"]
+    timeout-minutes: 120
+    steps:
+      - name: Clean macOS runner workspace
+        run: |
+          rm -rf ${{ github.workspace }}/*
+          
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+          
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+          
+      - name: Clean up previous files
+        run: |
+          sudo rm -rf /opt/finch
+          sudo rm -rf ~/.finch
+          sudo rm -rf ./_output
+          if pgrep '^qemu-system'; then
+            sudo pkill '^qemu-system'
+          fi
+          if pgrep '^socket_vmnet'; then
+            sudo pkill '^socket_vmnet'
+          fi
+          
+      - name: Install Rosetta 2
+        run: echo "A" | softwareupdate --install-rosetta || true
+        
+      - run: brew install lz4 automake autoconf libtool yq
+        shell: zsh {0}
+        
+      - name: Build project
+        run: |
+          export PATH="/opt/homebrew/opt/libtool/libexec/gnubin:$PATH"
+          make
+        shell: zsh {0}
+        
+      - name: Initialize Finch VM
+        run: |
+          ./_output/bin/finch vm init
+        shell: zsh {0}
+        
+      - name: Setup local registry with auth
+        run: |
+          # Create registry directories
+          mkdir -p /tmp/registry/{data,auth}
+          
+          # Create htpasswd file
+          docker run --rm --entrypoint htpasswd httpd:2 -Bbn testuser testpass > /tmp/registry/auth/htpasswd
+          
+          # Start local registry with auth
+          ./_output/bin/finch run -d \
+            --name registry \
+            -p 5000:5000 \
+            -v /tmp/registry/data:/var/lib/registry \
+            -v /tmp/registry/auth:/auth \
+            -e "REGISTRY_AUTH=htpasswd" \
+            -e "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm" \
+            -e "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd" \
+            registry:2
+        shell: zsh {0}
+        
+      - name: Test credential security
+        run: |
+          # Test 1: Pull public image (should work)
+          ./_output/bin/finch pull alpine
+          
+          # Test 2: Login to local registry
+          echo "testpass" | ./_output/bin/finch login localhost:5000 -u testuser --password-stdin
+          
+          # Test 3: Check credentials not stored in plaintext
+          if grep -r "testpass" ~/.finch/ 2>/dev/null; then
+            echo "ERROR: Password found in plaintext"
+            exit 1
+          fi
+          
+          # Test 4: Push/pull from private registry
+          ./_output/bin/finch tag alpine localhost:5000/test-image
+          ./_output/bin/finch push localhost:5000/test-image
+          ./_output/bin/finch rmi localhost:5000/test-image
+          ./_output/bin/finch pull localhost:5000/test-image
+          
+          # Test 5: Logout and verify access denied
+          ./_output/bin/finch logout localhost:5000
+          if ./_output/bin/finch push localhost:5000/test-image2 2>/dev/null; then
+            echo "ERROR: Push succeeded after logout"
+            exit 1
+          fi
+        shell: zsh {0}
+        
+      - name: Cleanup
+        if: always()
+        run: |
+          ./_output/bin/finch rm -f registry || true
+          ./_output/bin/finch vm stop || true
+          rm -rf /tmp/registry || true
+        shell: zsh {0}
+
+  windows-cred-manager:
+    runs-on: ["self-hosted", "windows", "amd64", "test"]
+    timeout-minutes: 120
+    steps:
+      - name: Setup Windows credential tests
+        run: |
+          # Windows credential manager tests
+          echo "Windows credential tests placeholder"
+

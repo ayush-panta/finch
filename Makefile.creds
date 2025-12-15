@@ -1,0 +1,144 @@
+CRED_HELPER_BASE_URL := https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4
+
+DARWIN_ARM64_ARTIFACT := docker-credential-osxkeychain-v0.9.4.darwin-arm64
+DARWIN_ARM64_256_DIGEST := 8db5b7cbcbe0870276e56aa416416161785e450708af64cda0f1be4c392dc2e5
+
+DARWIN_AMD64_ARTIFACT := docker-credential-osxkeychain-v0.9.4.darwin-amd64
+DARWIN_AMD64_256_DIGEST := ad76d1a1e03def49edfa57fdb2874adf2c468cfa0438aae1b2589434796f7c01
+
+WINDOWS_ARM64_ARTIFACT := docker-credential-wincred-v0.9.4.windows-arm64.exe
+WINDOWS_ARM64_256_DIGEST := 80a6ddbbabc51a8952308acf4d03c044308357cf217300461c44df066c57fe03
+
+WINDOWS_AMD64_ARTIFACT := docker-credential-wincred-v0.9.4.windows-amd64.exe
+WINDOWS_AMD64_256_DIGEST := 66fdf4b50c83aeb04a9ea04af960abaf1a7b739ab263115f956b98bb0d16aa7e
+
+# Platform-specific credential helper configuration
+ifeq ($(BUILD_OS), Darwin)
+CRED_HELPER_ARTIFACT := $(if $(findstring arm64,$(ARCH)),$(DARWIN_ARM64_ARTIFACT),$(DARWIN_AMD64_ARTIFACT))
+CRED_HELPER_DIGEST := $(if $(findstring arm64,$(ARCH)),$(DARWIN_ARM64_256_DIGEST),$(DARWIN_AMD64_256_DIGEST))
+CRED_HELPER_NAME := docker-credential-osxkeychain
+else ifeq ($(BUILD_OS), Windows_NT)
+CRED_HELPER_ARTIFACT := $(if $(findstring arm64,$(ARCH)),$(WINDOWS_ARM64_ARTIFACT),$(WINDOWS_AMD64_ARTIFACT))
+CRED_HELPER_DIGEST := $(if $(findstring arm64,$(ARCH)),$(WINDOWS_ARM64_256_DIGEST),$(WINDOWS_AMD64_256_DIGEST))
+CRED_HELPER_NAME := docker-credential-wincred
+endif
+
+CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_ARTIFACT)
+CRED_HELPER_OUTPUT := $(OUTDIR)/finch-credhelper/$(CRED_HELPER_NAME)$(if $(findstring .exe,$(CRED_HELPER_ARTIFACT)),.exe,)
+CRED_HELPER_VM_PATH := ~/.finch/cred-helpers/$(CRED_HELPER_NAME)
+
+.PHONY: finch-cred-bridge
+finch-cred-bridge:
+	mkdir -p $(OUTDIR)/finch-credhelper
+	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/finch-credhelper/finch-cred-bridge $(PACKAGE)/cmd/finch-credhelper
+
+.PHONY: docker-credential-helper
+docker-credential-helper:
+ifeq ($(BUILD_OS), Linux)
+	@echo "No credential helper needed for Linux"
+else ifeq ($(BUILD_OS), Windows_NT)
+	@"$(MAKE)" install-credential-helper create-dummy-helper
+else
+	@$(MAKE) install-credential-helper create-dummy-helper
+endif
+
+.PHONY: install-credential-helper
+install-credential-helper:
+	mkdir -p $(dir $(CRED_HELPER_OUTPUT))
+	curl -L $(CRED_HELPER_URL) -o $(CRED_HELPER_OUTPUT)
+	@echo "Verifying SHA256 checksum..."
+	@if echo "$(CRED_HELPER_DIGEST)  $(CRED_HELPER_OUTPUT)" | $(if $(findstring Darwin,$(BUILD_OS)),shasum -a 256,sha256sum) -c -; then \
+		echo "Checksum verification passed"; \
+	else \
+		echo "Checksum verification failed" && exit 1; \
+	fi
+	chmod +x $(CRED_HELPER_OUTPUT)
+
+.PHONY: create-dummy-helper
+create-dummy-helper:
+ifeq ($(BUILD_OS), Windows_NT)
+	mkdir -p "$(USERPROFILE)/.finch/cred-helpers/"
+	cp "$(CRED_HELPER_OUTPUT)" "$(USERPROFILE)/.finch/cred-helpers/$(CRED_HELPER_NAME)"
+else
+	mkdir -p $(dir $(CRED_HELPER_VM_PATH))
+	cp $(CRED_HELPER_OUTPUT) $(CRED_HELPER_VM_PATH)
+endif
+
+# LaunchAgent plist management (macOS only)
+ifeq ($(BUILD_OS), Darwin)
+PLIST_NAME := com.runfinch.cred-bridge.plist
+PLIST_SOURCE := cmd/finch-credhelper/$(PLIST_NAME)
+PLIST_TEMPLATE := cmd/finch-credhelper/$(PLIST_NAME).template
+PLIST_DEST := $(HOME)/Library/LaunchAgents/$(PLIST_NAME)
+
+.PHONY: generate-plist
+generate-plist:
+	@echo "Generating plist with current paths..."
+	sed -e "s|\$$HOME|$(HOME)|g" \
+	    -e "s|\$$USER|$(USER)|g" \
+	    -e "s|\$$FINCH_CRED_BRIDGE_PATH|$(CURDIR)/_output/finch-credhelper/finch-cred-bridge|g" \
+	    $(PLIST_TEMPLATE) > $(PLIST_SOURCE)
+
+.PHONY: install-plist
+install-plist: generate-plist
+	@echo "Installing LaunchAgent plist..."
+	cp $(PLIST_SOURCE) $(PLIST_DEST)
+	launchctl load $(PLIST_DEST)
+	@echo "LaunchAgent loaded successfully"
+
+.PHONY: uninstall-plist
+uninstall-plist:
+	@echo "Uninstalling LaunchAgent plist..."
+	-launchctl unload $(PLIST_DEST) 2>/dev/null || true
+	-rm $(PLIST_DEST) 2>/dev/null || true
+	@echo "LaunchAgent uninstalled"
+
+.PHONY: reload-plist
+reload-plist: uninstall-plist install-plist
+	@echo "LaunchAgent reloaded"
+
+.PHONY: dev-install
+dev-install:
+	@echo "Creating development symlinks to mimic /Applications/Finch installation..."
+	sudo mkdir -p /Applications/Finch/bin/
+	sudo ln -sf $(CURDIR)/_output/bin/finch-cred-bridge /Applications/Finch/bin/finch-cred-bridge
+	sudo ln -sf $(CURDIR)/_output/bin/finch /Applications/Finch/bin/finch
+	@echo "Development installation complete - finch appears to be in /Applications/Finch"
+
+.PHONY: dev-uninstall
+dev-uninstall:
+	@echo "Removing development symlinks..."
+	-sudo rm /Applications/Finch/bin/finch-cred-bridge 2>/dev/null || true
+	-sudo rm /Applications/Finch/bin/finch 2>/dev/null || true
+	@echo "Development installation removed"
+
+.PHONY: setup-cred-bridge
+setup-cred-bridge:
+ifeq ($(BUILD_OS), Darwin)
+	@echo "Setting up credential bridge..."
+	@if [ ! -L "/Applications/Finch/bin/finch-cred-bridge" ]; then \
+		echo "Creating credential bridge symlink (requires sudo)..."; \
+		sudo mkdir -p /Applications/Finch/bin/; \
+		sudo ln -sf $(CURDIR)/_output/bin/finch-cred-bridge /Applications/Finch/bin/finch-cred-bridge; \
+	fi
+	@if [ ! -L "/Applications/Finch/bin/finch" ]; then \
+		echo "Creating finch binary symlink (requires sudo)..."; \
+		sudo ln -sf $(CURDIR)/_output/bin/finch /Applications/Finch/bin/finch; \
+	fi
+	@if ! launchctl list | grep -q com.runfinch.cred-bridge; then \
+		echo "Installing LaunchAgent..."; \
+		$(MAKE) install-plist; \
+	else \
+		echo "LaunchAgent already loaded"; \
+	fi
+	@echo "Credential bridge setup complete"
+else ifeq ($(BUILD_OS), Windows_NT)
+	@echo "Credential bridge setup for Windows - no additional setup needed"
+else
+	@echo "Credential bridge setup not supported on this platform"
+endif
+else
+.PHONY: install-plist uninstall-plist reload-plist
+install-plist uninstall-plist reload-plist:
+	@echo "LaunchAgent plist management is macOS-specific"
+endif

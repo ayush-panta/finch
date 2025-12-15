@@ -79,7 +79,11 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+ifeq ($(BUILD_OS), Windows_NT)
+remote-all: arch-test finch finch-cred-bridge docker-credential-helper install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+else
+remote-all: arch-test finch finch-cred-bridge docker-credential-helper install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service setup-cred-bridge
+endif
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -91,6 +95,9 @@ else ifeq ($(BUILD_OS), Linux)
 # on Linux, we only need to build "finch"
 all: finch
 endif
+
+# Include credential helper targets
+include Makefile.creds
 
 .PHONY: install.finch-core-dependencies
 install.finch-core-dependencies:
@@ -260,6 +267,8 @@ download-licenses:
 
 	mkdir -p "$(LICENSEDIR)/github.com/lima-vm/lima"
 	curl https://raw.githubusercontent.com/lima-vm/lima/master/LICENSE --output "$(LICENSEDIR)/github.com/lima-vm/lima/LICENSE"
+	mkdir -p "$(LICENSEDIR)/github.com/docker/docker-credential-helpers"
+	curl https://raw.githubusercontent.com/docker/docker-credential-helpers/master/LICENSE --output "$(LICENSEDIR)/github.com/docker/docker-credential-helpers/LICENSE"
 
     ### system-level dependencies - end ###
 
@@ -405,6 +414,14 @@ mdlint:
 # If markdownlint is not installed, you can run markdownlint within a container.
 mdlint-ctr:
 	$(BINARYNAME) run --rm -v "$(shell pwd):/repo:ro" -w /repo avtodev/markdown-lint:v1 --ignore CHANGELOG.md '**/*.md'
+
+.PHONY: dev-clean
+dev-clean:
+	-@rm -rf $(OUTDIR) 2>/dev/null || true
+	-@$(MAKE) -C $(FINCH_CORE_DIR) clean
+	-@rm ./*.tar.gz 2>/dev/null || true
+	-@rm ./*.qcow2 2>/dev/null || true
+	-@rm ./test-coverage.* 2>/dev/null || true
 
 .PHONY: clean
 ifeq ($(GOOS),windows)
