@@ -19,26 +19,18 @@
         <array>
             <dict>
                 <key>SockPathName</key>
-                <string>$HOME/Documents/finch-creds/finch/_output/finch-credhelper/native-creds.sock</string>
+                <string>$HOME/.finch/native-creds.sock</string>
                 <key>SockPathMode</key>
                 <integer>384</integer>
             </dict>
         </array>
     </dict>
-
-    <key>StandardOutPath</key>
-    <string>$HOME/.finch/cred-bridge.log</string>
-    <key>StandardErrorPath</key>
-    <string>$HOME/.finch/cred-bridge.log</string>
     
     <key>inetdCompatibility</key>
     <dict>
         <key>Wait</key>
         <false/>
     </dict>
-
-
-
 
 </dict>
 </plist>
