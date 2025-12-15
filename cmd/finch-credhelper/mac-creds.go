@@ -23,7 +23,7 @@ func main() {
 	// macOS credential helper using socket activation via launchd
 	// launchd passes the socket connection through stdin
 	if err := handleCredstoreRequest(); err != nil {
-		fmt.Fprintf(os.Stderr, "credential helper error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "credential helper failed\n")
 		os.Exit(1)
 	}
 }
