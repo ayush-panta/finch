@@ -1,7 +1,2 @@
 vmType: wsl2
 mountType: wsl2
-
-portForwards:
-- guestSocket: "/tmp/native-creds.sock"
-  hostSocket: "<finch_credhelper_pipe_location>"
-  reverse: true

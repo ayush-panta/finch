@@ -25,16 +25,31 @@ const (
 	nerdctlRootfulCfgPath = "/etc/nerdctl/nerdctl.toml"
 )
 
-// Native credential helper wrapper script
-const keychainCredHelperScript = `#!/bin/bash
+const osxkeychainCredHelperScript = `#!/bin/bash
 input=$(cat)
-printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:/tmp/native-creds.sock
+printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:/tmp/native-creds.sock 2>/dev/null
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo '{"error": "credential helper connection failed"}'
+    exit 1
+fi
 `
 
-const nativeCredHelperScriptWindows = `#!/bin/bash
+const wincredCredHelperScript = `#!/bin/bash
 input=$(cat)
-response=$(printf "%s\n%s\n" "$1" "$input" | npiperelay.exe -ei -s //./pipe/finch-native-creds 2>/dev/null)
-...`
+SOCKET_PATH=$(wslpath "$(wslvar USERPROFILE)")/.finch/native-creds.sock
+printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:"$SOCKET_PATH" 2>/dev/null
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo '{"error": "credential helper connection failed"}'
+    exit 1
+fi
+`
+
+var helperTemplateScripts = map[string]string{
+	"osxkeychain": osxkeychainCredHelperScript,
+	"wincred":     wincredCredHelperScript,
+}
 
 type nerdctlConfigApplier struct {
 	dialer           fssh.Dialer
@@ -106,7 +121,7 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 	}
 
 	//nolint:gosec // G101: Potential hardcoded credentials false positive
-	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
+	const generalCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
   (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
   ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
 
@@ -122,9 +137,10 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 
 		// If using native credstore, use overwrite instead of symlink
 		if credHelper == "osxkeychain" || credHelper == "wincred" {
-			cmdArr = append(cmdArr, fmt.Sprintf(nativeCredHelperTemplate, credHelper, nativeCredHelperScript, credHelper, credHelper))
+			helperScript := helperTemplateScripts[credHelper]
+			cmdArr = append(cmdArr, fmt.Sprintf(nativeCredHelperTemplate, credHelper, helperScript, credHelper, credHelper))
 		} else {
-			cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+			cmdArr = append(cmdArr, fmt.Sprintf(generalCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
 		}
 	}
 
