@@ -8,9 +8,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/sh</string>
-        <string>-c</string>
-        <string>exec $FINCH_CRED_BRIDGE_PATH</string>
+        <string>$(FINCH_CREDHELPER_DIR)/finch-cred-bridge</string>
     </array>
 
     <key>Sockets</key>

@@ -109,7 +109,7 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 	const nativeCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
   (sudo mkdir -p /usr/local/bin) && \
   (echo '%s' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null) && \
-  (sudo chmod +x /usr/local/bin/docker-credential-%s))`
+  (sudo chmod 700 /usr/local/bin/docker-credential-%s))`
 
 	for _, credHelper := range fc.CredsHelpers {
 		// Add the credhelper to config by default, removes need for user to add

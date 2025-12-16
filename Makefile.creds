@@ -30,6 +30,7 @@ CRED_HELPER_OUTPUT := $(HOME)/.finch/cred-helpers/$(CRED_HELPER_NAME)
 finch-cred-bridge:
 	mkdir -p $(FINCH_CREDHELPER_DIR)
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(FINCH_CREDHELPER_DIR)/finch-cred-bridge $(PACKAGE)/cmd/finch-credhelper
+	chmod 700 $(FINCH_CREDHELPER_DIR)/finch-cred-bridge
 
 # Download and verify credential helper
 .PHONY: docker-credential-helper
@@ -45,7 +46,7 @@ else
 	else \
 		echo "Checksum verification failed" && exit 1; \
 	fi
-	chmod +x $(CRED_HELPER_OUTPUT)
+	chmod 700 $(CRED_HELPER_OUTPUT)
 endif
 
 # macOS LaunchAgent management
