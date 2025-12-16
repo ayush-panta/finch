@@ -23,13 +23,13 @@ else ifeq ($(BUILD_OS), Windows_NT)
 endif
 
 CRED_HELPER_URL := $(CRED_HELPER_BASE_URL)/$(CRED_HELPER_ARTIFACT)
-CRED_HELPER_OUTPUT := $(OUTDIR)/finch-credhelper/$(CRED_HELPER_NAME)
+CRED_HELPER_OUTPUT := $(HOME)/.finch/cred-helpers/$(CRED_HELPER_NAME)
 
 # Build finch credential bridge
 .PHONY: finch-cred-bridge
 finch-cred-bridge:
-	mkdir -p $(OUTDIR)/finch-credhelper
-	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/finch-credhelper/finch-cred-bridge $(PACKAGE)/cmd/finch-credhelper
+	mkdir -p $(FINCH_CREDHELPER_DIR)
+	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(FINCH_CREDHELPER_DIR)/finch-cred-bridge $(PACKAGE)/cmd/finch-credhelper
 
 # Download and verify credential helper
 .PHONY: docker-credential-helper
@@ -57,10 +57,12 @@ PLIST_DEST := $(HOME)/Library/LaunchAgents/$(PLIST_NAME)
 .PHONY: install-launch-agent
 install-launch-agent:
 	@echo "Installing LaunchAgent..."
+	mkdir -p $(dir $(PLIST_DEST))
 	sed -e "s|\$$HOME|$(HOME)|g" \
-	    -e "s|\$$FINCH_CRED_BRIDGE_PATH|$(CURDIR)/_output/finch-credhelper/finch-cred-bridge|g" \
+	    -e "s|\$$FINCH_CRED_BRIDGE_PATH|$(FINCH_CREDHELPER_DIR)/finch-cred-bridge|g" \
 	    $(PLIST_TEMPLATE) > $(PLIST_DEST)
-	launchctl load $(PLIST_DEST)
+	-launchctl bootout gui/$$(id -u)/com.runfinch.cred-bridge 2>/dev/null || true
+	launchctl bootstrap gui/$$(id -u) $(PLIST_DEST)
 	@echo "LaunchAgent installed and loaded"
 
 .PHONY: uninstall-launch-agent
@@ -71,27 +73,39 @@ uninstall-launch-agent:
 	@echo "LaunchAgent uninstalled"
 
 .PHONY: setup-cred-bridge
-setup-cred-bridge: finch-cred-bridge
-	@echo "Setting up credential bridge..."
-	@if ! launchctl list | grep -q com.runfinch.cred-bridge; then \
-		$(MAKE) install-launch-agent; \
-	else \
-		echo "LaunchAgent already loaded"; \
-	fi
+setup-cred-bridge: finch-cred-bridge install-launch-agent
+	@echo "Credential bridge setup complete"
+
+else ifeq ($(BUILD_OS), Windows_NT)
+# Windows Service management
+.PHONY: install-service
+install-service:
+	@echo "Installing Windows Service..."
+	sc create "FinchCredBridge" binPath= "$(FINCH_CREDHELPER_DIR)\finch-cred-bridge.exe" start= demand
+	sc description "FinchCredBridge" "Finch Credential Bridge Service"
+	@echo "Windows Service installed"
+
+.PHONY: uninstall-service
+uninstall-service:
+	@echo "Uninstalling Windows Service..."
+	-sc stop "FinchCredBridge" 2>nul
+	-sc delete "FinchCredBridge" 2>nul
+	@echo "Windows Service uninstalled"
+
+.PHONY: setup-cred-bridge
+setup-cred-bridge: finch-cred-bridge install-service
 	@echo "Credential bridge setup complete"
 
 else
-.PHONY: install-launch-agent uninstall-launch-agent setup-cred-bridge
-install-launch-agent uninstall-launch-agent setup-cred-bridge:
-	@echo "LaunchAgent management is macOS-specific"
+.PHONY: install-launch-agent uninstall-launch-agent setup-cred-bridge install-service uninstall-service
+install-launch-agent uninstall-launch-agent setup-cred-bridge install-service uninstall-service:
+	@echo "Service management is platform-specific"
 endif
 
 .PHONY: make-creds
 ifeq ($(BUILD_OS), Linux)
 make-creds:
 	@echo "No credential helpers needed for Linux"
-else ifeq ($(BUILD_OS), Windows_NT)
-make-creds: finch-cred-bridge docker-credential-helper
 else
 make-creds: finch-cred-bridge docker-credential-helper setup-cred-bridge
 endif

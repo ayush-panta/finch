@@ -61,5 +61,5 @@ portForwards:
 - guestSocket: "/run/finch.sock"
   hostSocket: "{{.Dir}}/sock/finch.sock"
 - guestSocket: "/tmp/native-creds.sock"
-  hostSocket: "{{.Home}}/Documents/finch-creds/finch/_output/finch-credhelper/native-creds.sock"
+  hostSocket: "<finch_credhelper_socket_location>"
   reverse: true
