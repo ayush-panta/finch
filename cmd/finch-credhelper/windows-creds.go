@@ -8,23 +8,23 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+
+	"github.com/Microsoft/go-winio"
 )
 
 // Windows socket server (for WSL2 socket forwarding)
 func startWindowsCredentialServer() error {
 
-	// Create socket path in user's Documents/finch-creds directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
+	pipePath := filepath.Join(`\\.\pipe\native-creds`)
+	os.Remove(pipePath)
+	config := &winio.PipeConfig{
+		SecurityDescriptor: "D:P(A;;GA;;;CO)(A;;GA;;;SY)", // owner + "root" (need to verify)
+		InputBufferSize:    4096,
+		OutputBufferSize:   4096,
 	}
-	socketPath := filepath.Join(homeDir, ".finch", "native-creds.sock")
-	os.Remove(socketPath)
-
-	// Listen on Unix socket
-	listener, err := net.Listen("unix", socketPath)
+	listener, err := winio.ListenPipe(pipePath, config)
 	if err != nil {
-		return fmt.Errorf("failed to create socket: %w", err)
+		return fmt.Errorf("failed to create pipe: %w", err)
 	}
 	defer listener.Close()
 
@@ -39,7 +39,7 @@ func startWindowsCredentialServer() error {
 		// Handle each connection
 		go func(c net.Conn) {
 			defer c.Close()
-				if err := processCredentialRequest(c); err != nil {
+			if err := processCredentialRequest(c); err != nil {
 				log.Printf("Error processing credential request")
 			}
 		}(conn)

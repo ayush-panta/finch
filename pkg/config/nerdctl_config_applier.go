@@ -26,10 +26,15 @@ const (
 )
 
 // Native credential helper wrapper script
-const nativeCredHelperScript = `#!/bin/bash
+const keychainCredHelperScript = `#!/bin/bash
 input=$(cat)
 printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:/tmp/native-creds.sock
 `
+
+const nativeCredHelperScriptWindows = `#!/bin/bash
+input=$(cat)
+response=$(printf "%s\n%s\n" "$1" "$input" | npiperelay.exe -ei -s //./pipe/finch-native-creds 2>/dev/null)
+...`
 
 type nerdctlConfigApplier struct {
 	dialer           fssh.Dialer
