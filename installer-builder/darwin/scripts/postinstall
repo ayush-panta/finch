@@ -33,4 +33,7 @@ pkgutil --pkgs | grep '^org\.Finch\.' | grep -v '^org\.Finch\.__VERSION__' | whi
     sudo pkgutil --forget "$pkg"
 done
 
+# Create and add native credhelper .plist to LaunchAgents
+/Applications/Finch/tools/native-creds-agent-start.sh
+
 echo "Post installation process finished."

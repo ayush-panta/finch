@@ -52,7 +52,7 @@ endif
 # macOS LaunchAgent management
 ifeq ($(BUILD_OS), Darwin)
 PLIST_NAME := com.runfinch.cred-bridge.plist
-PLIST_TEMPLATE := cmd/finch-credhelper/$(PLIST_NAME).template
+PLIST_TEMPLATE := installer-builder/templates/$(PLIST_NAME).template
 PLIST_DEST := $(HOME)/Library/LaunchAgents/$(PLIST_NAME)
 
 .PHONY: install-launch-agent
@@ -74,8 +74,13 @@ uninstall-launch-agent:
 	@echo "LaunchAgent uninstalled"
 
 .PHONY: setup-cred-bridge
+ifeq ($(INSTALLED), true)
+setup-cred-bridge: finch-cred-bridge
+	@echo "Built credential bridge binary - service installation deferred to installer"
+else
 setup-cred-bridge: finch-cred-bridge install-launch-agent
 	@echo "Credential bridge setup complete"
+endif
 
 else ifeq ($(BUILD_OS), Windows_NT)
 # Windows Service management
@@ -94,8 +99,13 @@ uninstall-service:
 	@echo "Windows Service uninstalled"
 
 .PHONY: setup-cred-bridge
+ifeq ($(INSTALLED), true)
+setup-cred-bridge: finch-cred-bridge
+	@echo "Built credential bridge binary - service installation deferred to installer"
+else
 setup-cred-bridge: finch-cred-bridge install-service
 	@echo "Credential bridge setup complete"
+endif
 
 else
 .PHONY: install-launch-agent uninstall-launch-agent setup-cred-bridge install-service uninstall-service
