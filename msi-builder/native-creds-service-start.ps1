@@ -1,9 +1,3 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
-
-# native-creds-service-start.ps1
-# Install and start Finch Credential Bridge Windows Service
-
 param(
     [string]$InstallDir = $env:ProgramFiles + "\Finch"
 )

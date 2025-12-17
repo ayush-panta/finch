@@ -1,9 +1,3 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
-
-# native-creds-service-stop.ps1
-# Stop and remove Finch Credential Bridge Windows Service
-
 $ServiceName = "FinchCredBridge"
 
 Write-Host "Stopping and removing $ServiceName service..."
