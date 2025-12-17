@@ -1,0 +1,3 @@
+FROM 299170649678.dkr.ecr.us-west-2.amazonaws.com/test:nginx
+# Test dockerfile for credential bridge functionality
+# This pulls from private ECR to test credential access during build
