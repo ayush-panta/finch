@@ -41,11 +41,10 @@ buildPkgInstaller() {
     sed -i '' -e 's/__VERSION__/'"${VERSION}"'/g' $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/uninstall.sh
     
     #copy credential helper tools and templates, need to be accessible by postinstall and for re-init on error
-    mkdir -p $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/tools
-    cp ./installer-builder/templates/com.runfinch.cred-bridge.plist.template $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/tools/
-    cp ./installer-builder/tools/native-creds-agent-start.sh $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/tools/
-    cp ./installer-builder/tools/native-creds-agent-stop.sh $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/tools/
-    chmod +x $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/tools/native-creds-agent-*.sh
+    mkdir -p $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/finch-credhelper
+    cp ./installer-builder/templates/com.runfinch.cred-bridge.plist.template $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/finch-credhelper/
+    cp ./installer-builder/tools/native-creds-agent-start.sh $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/finch-credhelper/
+    cp ./installer-builder/tools/native-creds-agent-stop.sh $INSTALLER_FULL_PATH/darwinpkg/Applications/Finch/finch-credhelper/
     
     #construct pkg directory
     mkdir -p $INSTALLER_FULL_PATH/package

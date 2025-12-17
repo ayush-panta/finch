@@ -3,7 +3,7 @@ set -e
 
 # Setting relevant paths
 FINCH_INSTALL_DIR="/Applications/Finch"
-TEMPLATE_PATH="$FINCH_INSTALL_DIR/tools/com.runfinch.cred-bridge.plist.template"
+TEMPLATE_PATH="$FINCH_INSTALL_DIR/finch-credhelper/com.runfinch.cred-bridge.plist.template"
 PLIST_PATH="$HOME/Library/LaunchAgents/com.runfinch.cred-bridge.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 
