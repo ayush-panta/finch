@@ -6,74 +6,164 @@ on:
   schedule:
     - cron: '0 8 * * *'
   workflow_dispatch:
+    inputs:
+      ref_name:
+        description: "name of git ref for which to run security tests"
+        required: false
+        type: string
 
 permissions:
+  # This is required for configure-aws-credentials to request an OIDC JWT ID token to access AWS resources later on.
+  # More info: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
   id-token: write
+  # This is required for actions/checkout
   contents: read
 
 env:
   GO_VERSION: '1.24.6'
 
-  # steps
-
-  # basics/setup
-    # setup the macOS environment
-    # create two users, A and B (sample names)
-    # will run as if we are A
-    # setup finch as if it were an application (packaging)
-    # confirm only native credstore configured
-    # ensure that binaries/sockets were created where expected with proper permissions (host and VM)
-    # ensure that the launchagent is loaded
-    # configure a local registry with registry docker image, private credentials
-    # test the remove script (is launchagent gone)
-    # test the install script
-
-  # testing actual functionality
-    # pull a large public image without registering
-    # test login security
-      # add another item (without credhelper), example private creds
-      # login to registry, confirm that we can enumerate and only see that
-      # call the binary as user B, see what happens
-      # essentially, make sure user B cannot do any funny business here
-      # make sure root also cannot do anything 
-    # tag and push a private image + finch system clear + check the registry got it
-    # pull the private image back from the registry
-    # credential stress test (might be able to replace the prior test)
-      # tag a few large images, different ones
-      # push at the same time
-      # remove
-      # pull at the same time
-    # test private buildfiles
-
-
-    
-
-  # testing if it breaks existing function
-    # add ecr-credhelper or something (what happens if both configured)
-    # or maybe, just add ecr-credhelper and nothing else
-    # login with dummy ECR credentials to some account
-    # ensure that it works?
-
-  # cleanup
-    # test the uninstall script manually (is launghagent gone)
-    # clean up runner environment
-
-  # QUESTIONS -> 
-    # what else do we need to test? Build from a private dockerfile? Idk... 
-    # are these thorough enough testing
-    # do we need to test existing functionality like that?
-  
-
 jobs:
-  macos-keychain:
-    runs-on: ["self-hosted", "macos", "arm64", "14", "test"]
+  # taken from finch/.github/workflows/build-and-test-pkg.yaml for consistent testing
+  get-tag-name:
+    name: Get tag name
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 2
+    outputs:
+      tag: ${{ steps.check-tag.outputs.tag }}
+      commit: ${{ steps.export-commit.outputs.commit }}
+    steps:
+      - name: Check tag from workflow input and github ref
+        id: check-tag
+        run: |
+          if [ -n "${{ inputs.ref_name }}" ]; then
+            tag=${{ inputs.ref_name }}
+          else
+            tag=${{ github.ref_name }}
+          fi
+          echo "using tag=${tag}"
+          echo "tag=$tag" >> ${GITHUB_OUTPUT}
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ steps.check-tag.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: true
+      - name: Export commit hash
+        id: export-commit
+        run: |
+          commit=$(git rev-parse HEAD)
+          echo "using commit=${commit}"
+          echo "commit=$commit" >> ${GITHUB_OUTPUT}
+
+  macos-security-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, amd64]
+        version: [14, 15]
+        include:
+          - arch: arm64
+            output_arch: aarch64
+          - arch: amd64
+            output_arch: x86_64
+    needs: get-tag-name
+    runs-on: ["self-hosted", "macos", "${{ matrix.arch }}", "${{ matrix.version }}", "test"]
     timeout-minutes: 120
     steps:
-      - name: 
+      - name: Clean workspace
         run: |
+          setopt NULL_GLOB && rm -rf ${{ github.workspace }}/*
+        shell: zsh {0}
+      
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ needs.get-tag-name.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: true
+      
+      - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          role-to-assume: ${{ secrets.ROLE }}
+          role-session-name: security-test-session
+          aws-region: ${{ secrets.REGION }}
+
+      # from here, it's personal..
+
+        # we want to configure two users finchUser, otherUser
+          # finchUser is the one who will actually run things to build and install finch
+
+      - name: Build Finch with credential helper
+        run: |
+          brew install lz4 automake autoconf libtool yq llvm
+          git clean -f -d
+          make clean
+          make download-licenses
+          make FINCH_OS_IMAGE_LOCATION_ROOT=/Applications/Finch
+        shell: zsh {0}
+
+      - id: final
+        name: generate pkg
+        run: |
+          ./installer-builder/tools/release-installer.sh \
+            ${{ inputs.output_arch }} \
+            ${{ inputs.tag }} \
+            ${{ secrets.INSTALLER_PRIVATE_BUCKET_NAME }} \
+            ${{ secrets.EXECUTABLE_BUCKET }} \
+            ${{ secrets.PKG_BUCKET }} \
+            ${{ secrets.NOTARIZATION_ACCOUNT }} \
+            ${{ secrets.NOTARIZATION_CREDENTIAL }}
+        shell: zsh {0}
+
+        # look for all relevant filepaths and permissions
+          # cred-helper in /.finch
+          # config.json and finch.yaml in /.finch set
+          # stuff in /App/Finch 
+        # look for launchagent loaded
+        # remove launchagent and make sure unloaded (script)
+        # install script and make sure its back
 
 
- 
+        # now ready for testing
+        # configure a local repository using  image "registry"
+          # doubles as a public finch image pull when not credentialed
+          # make finchUser, localhost as url, then finchPass
+          
+        # also use security as the user to directly inject other credentials into there
+        # now, login with some the said credentials to priuvate registry
+
+        # enumerate test to make sure we cannot see, onyl see with binary (enumerate based on creds)
+        # then try to access as user B and ensure we cannot see, nor access via docker-credential-helper binary
+          # should block bc in .finch
+        # make sure root cant really do anything with the binary, cant see either
+
+        # create a dockerfile
+          # in the dockerfile, we:
+            # tag our image with the local registry (some decently sized image with enough time to make a lot of requests)
+            # concurrently tag it as A-E (5) and then push to the registry
+            # finch system prune and confirm our registry empty
+            # check if all items are in the registry
+            # then pull one, confirm it works
+
+
+        # then we will do cleanup from finch/.github/workflows/test-pkg.yaml
+
+
+        
+      
+      - name: Security tests placeholder
+        run: |
+          echo "Running security tests on macOS ${{ matrix.version }} ${{ matrix.output_arch }}"
+          # TODO: Implement security test steps
+        shell: zsh {0}
 
   windows-cred-manager:
     runs-on: ["self-hosted", "windows", "amd64", "test"]
