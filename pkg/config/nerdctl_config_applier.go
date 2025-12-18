@@ -94,13 +94,28 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 	}
 
+	// template for finch credential helper (copies from /usr/bin to /usr/local/bin to follow existing flow)
+	const configureFinchCredHelperTemplate = `[ -L /usr/local/bin/docker-credential-finch ] || \
+  (sudo ln -s /usr/bin/docker-credential-finch /usr/local/bin/docker-credential-finch)`
+
 	//nolint:gosec // G101: Potential hardcoded credentials false positive
-	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
+	const configureOtherCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
   (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
   ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
 
-	for _, credHelper := range fc.CredsHelpers {
-		cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+	// Add finch as a path here
+	credHelpers := fc.CredsHelpers
+	if len(credHelpers) == 0 {
+		credHelpers = []string{"finch"}
+	}
+
+	for _, credHelper := range credHelpers {
+		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
+		if credHelper == "finch" {
+			cmdArr = append(cmdArr, configureFinchCredHelperTemplate)
+		} else {
+			cmdArr = append(cmdArr, fmt.Sprintf(configureOtherCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+		}
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)
