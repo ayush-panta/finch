@@ -320,6 +320,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 		"COSIGN_PASSWORD", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
 		"AWS_SESSION_TOKEN", "COMPOSE_FILE", "SOURCE_DATE_EPOCH",
 		"AWS_ECR_DISABLE_CACHE", "AWS_ECR_CACHE_DIR", "AWS_ECR_IGNORE_CREDS_STORAGE",
+		"FINCH_CREDS_SIMPLE_SOCKET",
 	}
 
 	var passedEnvArgs []string
@@ -339,6 +340,9 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	var additionalEnv []string
+	// Enable simple socket protocol for credential helper
+	additionalEnv = append(additionalEnv, "FINCH_CREDS_SIMPLE_SOCKET=1")
+	
 	switch cmdName {
 	case "image":
 		if slices.Contains(args, "build") || slices.Contains(args, "pull") || slices.Contains(args, "push") {
@@ -379,7 +383,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 
 	// Get finch root path for socket - use current working directory + _output
 	finchRootPath := ""
-	if cwd, err := nc.systemDeps.Getwd(); err == nil {
+	if cwd, err := nc.systemDeps.GetWd(); err == nil {
 		finchRootPath = filepath.Join(cwd, "_output")
 	}
 	
