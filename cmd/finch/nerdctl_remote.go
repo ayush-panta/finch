@@ -377,7 +377,16 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 		return nil
 	}
 
-	return nc.ncc.Create(runArgs...).Run()
+	// Get finch root path for socket - use current working directory + _output
+	finchRootPath := ""
+	if cwd, err := nc.systemDeps.Getwd(); err == nil {
+		finchRootPath = filepath.Join(cwd, "_output")
+	}
+	
+	// Wrap nerdctl execution with credential socket
+	return withCredSocket(finchRootPath, func() error {
+		return nc.ncc.Create(runArgs...).Run()
+	})
 }
 
 func (nc *nerdctlCommand) assertVMIsRunning(creator command.NerdctlCmdCreator, logger flog.Logger) error {
