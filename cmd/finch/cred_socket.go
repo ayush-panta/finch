@@ -106,8 +106,15 @@ func handleCredConnections(listener net.Listener) {
 func handleCredRequest(conn net.Conn) {
 	fmt.Fprintf(os.Stderr, "[SOCKET] Handling credential request\n")
 	
-	// Read server URL
+	// Read command and server URL
 	scanner := bufio.NewScanner(conn)
+	if !scanner.Scan() {
+		fmt.Fprintf(os.Stderr, "[SOCKET] Failed to read command\n")
+		return
+	}
+	command := strings.TrimSpace(scanner.Text())
+	fmt.Fprintf(os.Stderr, "[SOCKET] Received command: %s\n", command)
+	
 	if !scanner.Scan() {
 		fmt.Fprintf(os.Stderr, "[SOCKET] Failed to read server URL\n")
 		return
@@ -116,12 +123,13 @@ func handleCredRequest(conn net.Conn) {
 	fmt.Fprintf(os.Stderr, "[SOCKET] Received request for server: %s\n", serverURL)
 	
 	// Call native credential helper and capture output
-	creds, err := getNativeCredentials("get", serverURL)
+	fmt.Fprintf(os.Stderr, "[SOCKET] Calling native helper: %s %s\n", command, serverURL)
+	creds, err := getNativeCredentials(command, serverURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[SOCKET] Failed to get credentials: %v\n", err)
-		// Return empty credential JSON on error
+		// Return empty credential JSON with serverURL populated (like old approach)
 		emptyCred := dockerCredential{
-			ServerURL: "",
+			ServerURL: serverURL,
 			Username:  "",
 			Secret:    "",
 		}
@@ -137,10 +145,23 @@ func handleCredRequest(conn net.Conn) {
 
 // getNativeCredentials calls the native credential helper and returns parsed credentials
 func getNativeCredentials(action, serverURL string) (*dockerCredential, error) {
-	creds, err := callNativeCredHelperWithOutput(action, serverURL, "", "")
+	// Strip port from server URL for credential lookup (keychain doesn't store ports)
+	cleanURL := serverURL
+	if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
+		// Check if this is a port (numeric after colon)
+		portPart := serverURL[idx+1:]
+		if len(portPart) > 0 && portPart[0] >= '0' && portPart[0] <= '9' {
+			cleanURL = serverURL[:idx]
+			fmt.Fprintf(os.Stderr, "[SOCKET] Stripped port from %s -> %s\n", serverURL, cleanURL)
+		}
+	}
+	
+	creds, err := callNativeCredHelperWithOutput(action, cleanURL, "", "")
 	if err != nil {
 		return nil, err
 	}
+	// Restore original serverURL in response
+	creds.ServerURL = serverURL
 	return creds, nil
 }
 

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 	"syscall"
@@ -108,12 +107,6 @@ func loginAction(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Validate credentials with registry (simplified from nerdctl's loginClientSide)
-	err = validateCredentials(registryHost, username, password)
-	if err != nil {
-		return fmt.Errorf("login failed: %w", err)
-	}
-
 	// Store credentials using native helper (REPLACE nerdctl's credStore.Store)
 	err = callNativeCredHelper("store", registryHost, username, password)
 	if err != nil {
@@ -158,43 +151,3 @@ func readPassword() (string, error) {
 
 	return string(bytePassword), nil
 }
-
-
-
-// Simplified version of nerdctl's loginClientSide validation
-func validateCredentials(registryHost, username, password string) error {
-	// Build registry API URL
-	registryURL := "https://" + registryHost
-	if registryHost == "index.docker.io" {
-		registryURL = "https://registry-1.docker.io"
-	}
-	registryURL += "/v2/"
-
-	// Create HTTP request
-	req, err := http.NewRequest("GET", registryURL, nil)
-	if err != nil {
-		return err
-	}
-
-	// Add basic auth
-	req.SetBasicAuth(username, password)
-
-	// Make request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to connect to registry: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check response
-	if resp.StatusCode == 401 {
-		return errors.New("invalid credentials")
-	}
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("registry error: %d", resp.StatusCode)
-	}
-
-	return nil
-}
-

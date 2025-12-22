@@ -35,6 +35,17 @@ type nerdctlConfigApplier struct {
 	fc               *Finch
 }
 
+//nolint:gosec // G101: False positive - this is a shell script template, not hardcoded credentials
+const osxkeychainCredHelperScript = `#!/bin/bash
+input=$(cat)
+printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:/tmp/creds.sock 2>/dev/null
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo '{"error": "credential helper connection failed"}'
+    exit 1
+fi
+`
+
 var _ NerdctlConfigApplier = (*nerdctlConfigApplier)(nil)
 
 // NewNerdctlApplier creates a new NerdctlConfigApplier that
@@ -103,16 +114,25 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
   (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
   ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
 
-	// Add finch as a path here
+	//nolint:gosec // G101: Potential hardcoded credentials false positive
+	const nativeCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
+  (sudo mkdir -p /usr/local/bin) && \
+  (echo '%s' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null) && \
+  (sudo chmod 700 /usr/local/bin/docker-credential-%s))`
+
+	// Add default here
 	credHelpers := fc.CredsHelpers
 	if len(credHelpers) == 0 {
 		credHelpers = []string{"finch"}
+		// credHelpers = []string{"osxkeychain"}
 	}
 
 	for _, credHelper := range credHelpers {
 		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
 		if credHelper == "finch" {
 			cmdArr = append(cmdArr, configureFinchCredHelperTemplate)
+		} else if credHelper == "osxkeychain" {
+			cmdArr = append(cmdArr, fmt.Sprintf(nativeCredHelperTemplate, credHelper, osxkeychainCredHelperScript, credHelper, credHelper))
 		} else {
 			cmdArr = append(cmdArr, fmt.Sprintf(configureOtherCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
 		}

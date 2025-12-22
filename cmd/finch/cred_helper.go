@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -12,6 +13,76 @@ import (
 	"runtime"
 	"strings"
 )
+
+// From nerdctl's dockerconfigresolver
+type scheme string
+
+const (
+	StandardHTTPSPort                = "443"
+	schemeHTTPS               scheme = "https"
+	schemeHTTP                scheme = "http"
+	schemeNerdctlExperimental scheme = "nerdctl-experimental"
+	dockerIndexServer                = "https://index.docker.io/v1/"
+	namespaceQueryParameter          = "ns"
+)
+
+var (
+	ErrUnparsableURL     = errors.New("unparsable registry URL")
+	ErrUnsupportedScheme = errors.New("unsupported scheme in registry URL")
+)
+
+// RegistryURL from nerdctl's dockerconfigresolver
+type RegistryURL struct {
+	url.URL
+	Namespace *RegistryURL
+}
+
+// Parse from nerdctl's dockerconfigresolver
+func Parse(address string) (*RegistryURL, error) {
+	var err error
+	if address == "" || address == "docker.io" {
+		address = dockerIndexServer
+	}
+	if !strings.Contains(address, "://") {
+		address = fmt.Sprintf("%s://%s", schemeHTTPS, address)
+	}
+	u, err := url.Parse(address)
+	if err != nil {
+		return nil, errors.Join(ErrUnparsableURL, err)
+	}
+	sch := scheme(u.Scheme)
+	if sch == schemeHTTP {
+		u.Scheme = string(schemeHTTPS)
+	} else if sch != schemeHTTPS && sch != schemeNerdctlExperimental {
+		return nil, ErrUnsupportedScheme
+	}
+	if u.Port() == "" {
+		u.Host = u.Hostname() + ":" + StandardHTTPSPort
+	}
+	reg := &RegistryURL{URL: *u}
+	queryParams := u.Query()
+	nsQuery := queryParams.Get(namespaceQueryParameter)
+	if nsQuery != "" {
+		reg.Namespace, err = Parse(nsQuery)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return reg, nil
+}
+
+// CanonicalIdentifier from nerdctl's dockerconfigresolver
+func (rn *RegistryURL) CanonicalIdentifier() string {
+	if rn.Scheme == string(schemeHTTPS) && rn.Hostname() == "index.docker.io" && rn.Path == "/v1/" && rn.Port() == StandardHTTPSPort ||
+		rn.URL.String() == dockerIndexServer {
+		return dockerIndexServer
+	}
+	identifier := rn.Host
+	if rn.Namespace != nil {
+		identifier = fmt.Sprintf("%s://%s/host/%s%s", schemeNerdctlExperimental, rn.Namespace.CanonicalIdentifier(), identifier, rn.Path)
+	}
+	return identifier
+}
 
 // Docker credential helper protocol
 type dockerCredential struct {
@@ -148,21 +219,11 @@ func callNativeCredHelperWithOutput(action, serverURL, username, password string
 	return &dockerCredential{}, nil
 }
 
-// Simplified version of nerdctl's dockerconfigresolver.Parse
+// parseRegistryURL uses nerdctl's actual Parse function
 func parseRegistryURL(serverAddress string) (string, error) {
-	if serverAddress == "" {
-		return "https://index.docker.io/v1/", nil
-	}
-
-	// Add https:// if no scheme
-	if !strings.Contains(serverAddress, "://") {
-		serverAddress = "https://" + serverAddress
-	}
-
-	u, err := url.Parse(serverAddress)
+	reg, err := Parse(serverAddress)
 	if err != nil {
-		return "", fmt.Errorf("invalid registry URL: %w", err)
+		return "", err
 	}
-
-	return u.Host, nil
+	return reg.CanonicalIdentifier(), nil
 }
