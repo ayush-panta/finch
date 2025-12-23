@@ -3,26 +3,15 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
-	"syscall"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
+	"github.com/runfinch/finch/pkg/command"
 )
 
-// Extracted from nerdctl's prompt.go
-var (
-	ErrUsernameIsRequired = errors.New("username is required")
-	ErrPasswordIsRequired = errors.New("password is required")
-	ErrReadingUsername    = errors.New("unable to read username")
-	ErrReadingPassword    = errors.New("unable to read password")
-	ErrNotATerminal       = errors.New("stdin is not a terminal (Hint: use `finch login --username=USERNAME --password-stdin`)")
-)
 
 func newLoginCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -75,79 +64,12 @@ func loginAction(cmd *cobra.Command, args []string) error {
 		serverAddress = args[0]
 	}
 
-	// Parse registry URL (simplified from nerdctl's dockerconfigresolver.Parse)
-	registryHost, err := parseRegistryURL(serverAddress)
+	// Store credentials using nerdctl login directly
+	err = command.NerdctlLogin(serverAddress, username, password, cmd.OutOrStdout())
 	if err != nil {
-		return err
+		return fmt.Errorf("login failed: %w", err)
 	}
 
-	// Prompt for missing credentials (extracted from nerdctl's promptUserForAuthentication)
-	if username == "" {
-		fmt.Fprint(cmd.OutOrStdout(), "Enter Username: ")
-		username, err = readUsername()
-		if err != nil {
-			return err
-		}
-		username = strings.TrimSpace(username)
-		if username == "" {
-			return ErrUsernameIsRequired
-		}
-	}
-
-	if password == "" {
-		fmt.Fprint(cmd.OutOrStdout(), "Enter Password: ")
-		password, err = readPassword()
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(cmd.OutOrStdout())
-		password = strings.TrimSpace(password)
-		if password == "" {
-			return ErrPasswordIsRequired
-		}
-	}
-
-	// Store credentials using native helper (REPLACE nerdctl's credStore.Store)
-	err = callNativeCredHelper("store", registryHost, username, password)
-	if err != nil {
-		return fmt.Errorf("error saving credentials: %w", err)
-	}
-
-	fmt.Fprintln(cmd.OutOrStdout(), "Login Succeeded")
 	return nil
 }
 
-// Extracted from nerdctl's prompt.go
-func readUsername() (string, error) {
-	fd := os.Stdin
-	if !term.IsTerminal(int(fd.Fd())) {
-		return "", ErrNotATerminal
-	}
-
-	username, err := bufio.NewReader(fd).ReadString('\n')
-	if err != nil {
-		return "", errors.Join(ErrReadingUsername, err)
-	}
-
-	return strings.TrimSpace(username), nil
-}
-
-// Extracted from nerdctl's prompt_unix.go
-func readPassword() (string, error) {
-	fd := syscall.Stdin
-	if !term.IsTerminal(fd) {
-		tty, err := os.Open("/dev/tty")
-		if err != nil {
-			return "", err
-		}
-		defer tty.Close()
-		fd = int(tty.Fd())
-	}
-
-	bytePassword, err := term.ReadPassword(fd)
-	if err != nil {
-		return "", errors.Join(ErrReadingPassword, err)
-	}
-
-	return string(bytePassword), nil
-}

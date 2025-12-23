@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/runfinch/finch/pkg/command"
 )
 
 func newLogoutCommand() *cobra.Command {
@@ -26,19 +27,12 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 		serverAddress = args[0]
 	}
 
-	// Parse registry URL (same logic as login)
-	registryHost, err := parseRegistryURL(serverAddress)
+	// Logout using nerdctl logout directly
+	err := command.NerdctlLogout(serverAddress, cmd.OutOrStdout())
 	if err != nil {
-		return err
+		return fmt.Errorf("logout failed: %w", err)
 	}
 
-	// Erase credentials using native helper (REPLACE nerdctl's credStore.Erase)
-	err = callNativeCredHelper("erase", registryHost, "", "")
-	if err != nil {
-		return fmt.Errorf("failed to erase credentials for: %s - %w", registryHost, err)
-	}
-
-	fmt.Fprintf(cmd.OutOrStdout(), "Removed login credentials for %s\n", registryHost)
 	return nil
 }
 
