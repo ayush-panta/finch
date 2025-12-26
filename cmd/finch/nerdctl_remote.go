@@ -339,6 +339,9 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	var additionalEnv []string
+	// Enable simple socket protocol for credential helper
+	additionalEnv = append(additionalEnv, "FINCH_CREDS_SIMPLE_SOCKET=1")
+	
 	switch cmdName {
 	case "image":
 		if slices.Contains(args, "build") || slices.Contains(args, "pull") || slices.Contains(args, "push") {
@@ -377,7 +380,16 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 		return nil
 	}
 
-	return nc.ncc.Create(runArgs...).Run()
+	// Get finch root path for socket - use current working directory + _output
+	finchRootPath := ""
+	if cwd, err := nc.systemDeps.GetWd(); err == nil {
+		finchRootPath = filepath.Join(cwd, "_output")
+	}
+	
+	// Wrap nerdctl execution with credential socket
+	return withCredSocket(finchRootPath, func() error {
+		return nc.ncc.Create(runArgs...).Run()
+	})
 }
 
 func (nc *nerdctlCommand) assertVMIsRunning(creator command.NerdctlCmdCreator, logger flog.Logger) error {
