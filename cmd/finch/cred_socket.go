@@ -142,6 +142,6 @@ func withCredSocket(finchRootPath string, fn func() error) error {
 	// Ensure cleanup
 	defer stopCredSocket()
 	
-	// Execute command
+	// Execute command (nc.ncc.Create(runArgs...).Run())
 	return fn()
 }

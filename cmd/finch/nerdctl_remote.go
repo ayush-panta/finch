@@ -339,8 +339,9 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	var additionalEnv []string
-	// Enable simple socket protocol for credential helper
-	additionalEnv = append(additionalEnv, "FINCH_CREDS_SIMPLE_SOCKET=1")
+
+	// add env var to indicate use of native credstore
+	additionalEnv = append(additionalEnv, "USE_NATIVE_CREDSTORE=1")
 	
 	switch cmdName {
 	case "image":
