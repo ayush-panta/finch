@@ -40,6 +40,11 @@ FINCH_DAEMON_LOCATION_ROOT ?= $(FINCH_OS_IMAGE_LOCATION_ROOT)/finch-daemon
 FINCH_DAEMON_LOCATION ?= $(FINCH_DAEMON_LOCATION_ROOT)/finch-daemon
 FINCH_DAEMON_CREDHELPER_LOCATION ?= $(FINCH_DAEMON_LOCATION_ROOT)/docker-credential-finch
 
+# Docker credential helper configuration
+CRED_HELPER_URL := https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-osxkeychain-v0.9.4.darwin-arm64
+CRED_HELPER_DIGEST := 8db5b7cbcbe0870276e56aa416416161785e450708af64cda0f1be4c392dc2e5
+CRED_HELPER_OUTPUT := $(HOME)/.finch/cred-helpers/docker-credential-osxkeychain
+
 GOOS ?= $(shell $(GO) env GOOS)
 ifeq ($(GOOS),windows)
 BINARYNAME := $(addsuffix .exe, $(BINARYNAME))
@@ -86,7 +91,7 @@ include Makefile.windows
 all: remote-all
 else ifeq ($(BUILD_OS), Darwin)
 include Makefile.darwin
-all: remote-all
+all: remote-all docker-credential-helper
 else ifeq ($(BUILD_OS), Linux)
 # on Linux, we only need to build "finch"
 all: finch
@@ -405,6 +410,13 @@ mdlint:
 # If markdownlint is not installed, you can run markdownlint within a container.
 mdlint-ctr:
 	$(BINARYNAME) run --rm -v "$(shell pwd):/repo:ro" -w /repo avtodev/markdown-lint:v1 --ignore CHANGELOG.md '**/*.md'
+
+# Download docker credential helper for macOS ARM
+.PHONY: docker-credential-helper
+docker-credential-helper:
+	mkdir -p $(dir $(CRED_HELPER_OUTPUT))
+	curl -L $(CRED_HELPER_URL) -o $(CRED_HELPER_OUTPUT)
+	chmod 700 $(CRED_HELPER_OUTPUT)
 
 .PHONY: clean
 ifeq ($(GOOS),windows)

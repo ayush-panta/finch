@@ -35,6 +35,17 @@ type nerdctlConfigApplier struct {
 	fc               *Finch
 }
 
+//nolint:gosec // G101: False positive - this is a shell script template, not hardcoded credentials
+const osxkeychainCredHelperScript = `#!/bin/bash
+input=$(cat)
+printf "%s\n%s\n" "$1" "$input" | socat - UNIX-CONNECT:/tmp/creds.sock 2>/dev/null
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo '{"error": "credential helper connection failed"}'
+    exit 1
+fi
+`
+
 var _ NerdctlConfigApplier = (*nerdctlConfigApplier)(nil)
 
 // NewNerdctlApplier creates a new NerdctlConfigApplier that
@@ -94,13 +105,37 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 	}
 
+	// template for finch credential helper (copies from /usr/bin to /usr/local/bin to follow existing flow)
+	const configureFinchCredHelperTemplate = `[ -L /usr/local/bin/docker-credential-finch ] || \
+  (sudo ln -s /usr/bin/docker-credential-finch /usr/local/bin/docker-credential-finch)`
+
 	//nolint:gosec // G101: Potential hardcoded credentials false positive
-	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
+	const configureOtherCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
   (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
   ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
 
-	for _, credHelper := range fc.CredsHelpers {
-		cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+	//nolint:gosec // G101: Potential hardcoded credentials false positive
+	const nativeCredHelperTemplate = `[ -x /usr/local/bin/docker-credential-%s ] || (
+  (sudo mkdir -p /usr/local/bin) && \
+  (echo '%s' | sudo tee /usr/local/bin/docker-credential-%s > /dev/null) && \
+  (sudo chmod 700 /usr/local/bin/docker-credential-%s))`
+
+	// Add default here
+	credHelpers := fc.CredsHelpers
+	if len(credHelpers) == 0 {
+		credHelpers = []string{"finch"}
+		// credHelpers = []string{"osxkeychain"}
+	}
+
+	for _, credHelper := range credHelpers {
+		cmdArr = append(cmdArr, fmt.Sprintf(`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, credHelper))
+		if credHelper == "finch" {
+			cmdArr = append(cmdArr, configureFinchCredHelperTemplate)
+		} else if credHelper == "osxkeychain" {
+			cmdArr = append(cmdArr, fmt.Sprintf(nativeCredHelperTemplate, credHelper, osxkeychainCredHelperScript, credHelper, credHelper))
+		} else {
+			cmdArr = append(cmdArr, fmt.Sprintf(configureOtherCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+		}
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)
