@@ -7,7 +7,6 @@ provision:
   - mode: boot
     script: |
       modprobe virtiofs
-  # port this to common.yaml after windows socket forwarding is added
   - mode: user
     script: |
       sudo cp <finch_daemon_location> /usr/local/bin/finch-daemon
@@ -57,3 +56,6 @@ hostResolver:
 portForwards:
 - guestSocket: "/run/finch.sock"
   hostSocket: "{{.Dir}}/sock/finch.sock"
+- guestSocket: "/tmp/creds.sock"
+  hostSocket: "{{.Dir}}/sock/creds.sock"
+  reverse: true
