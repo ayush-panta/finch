@@ -38,11 +38,6 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s: %v\n", registryURL.Host, err)
 	}
 
-	if serverAddress != "" {
-		fmt.Fprintf(cmd.OutOrStdout(), "Removed login credentials for %s\n", serverAddress)
-	} else {
-		fmt.Fprintln(cmd.OutOrStdout(), "Removed login credentials")
-	}
-
+	fmt.Fprintf(cmd.OutOrStdout(), "Removed login credentials for %s\n", registryURL.Host)
 	return nil
 }
