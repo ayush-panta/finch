@@ -13,61 +13,56 @@ import (
 	"sync"
 )
 
-var (
-	credSocketMutex sync.Mutex
-	credSocketConn  net.Listener
-)
+type credentialSocket struct {
+	mu       sync.Mutex
+	listener net.Listener
+}
+var globalCredSocket = &credentialSocket{}
 
-// startCredSocket starts the credential socket for nerdctl commands
-func startCredSocket(finchRootPath string) error {
-	credSocketMutex.Lock()
-	defer credSocketMutex.Unlock()
+// open the socket that serves as bridge between vm and host
+func (cs *credentialSocket) start(finchRootPath string) error {
 
-	// Skip if already running
-	if credSocketConn != nil {
+	// prevent race condition on socket management
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	// early break if socket already active
+	if cs.listener != nil {
 		return nil
 	}
 
-	// Create socket path - must match Lima's {{.Dir}}/sock/creds.sock expectation
 	socketPath := filepath.Join(finchRootPath, "lima", "data", "finch", "sock", "creds.sock")
-	
-	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(socketPath), 0755); err != nil {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
+	_ = os.Remove(socketPath)
 
-	// Remove existing socket file
-	os.Remove(socketPath)
-
-	// Create Unix socket
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
 		return fmt.Errorf("failed to create credential socket: %w", err)
 	}
+	cs.listener = listener
 
-	credSocketConn = listener
-	
-	// Start accepting connections in background
-	go handleCredConnections(listener)
-	
+	// routes connections through socket in separate threads
+	go cs.handleConnections()
 	return nil
 }
 
-// stopCredSocket stops the credential socket
-func stopCredSocket() {
-	credSocketMutex.Lock()
-	defer credSocketMutex.Unlock()
+// stop stops the credential socket
+func (cs *credentialSocket) stop() {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
 
-	if credSocketConn != nil {
-		credSocketConn.Close()
-		credSocketConn = nil
+	if cs.listener != nil {
+		cs.listener.Close()
+		cs.listener = nil
 	}
 }
 
-// handleCredConnections handles incoming credential requests
-func handleCredConnections(listener net.Listener) {
+// handleConnections handles incoming credential requests
+func (cs *credentialSocket) handleConnections() {
 	for {
-		conn, err := listener.Accept()
+		conn, err := cs.listener.Accept()
 		if err != nil {
 			return // Socket closed
 		}
@@ -81,67 +76,58 @@ func handleCredConnections(listener net.Listener) {
 
 // handleCredRequest processes get credential requests from nerdctl
 func handleCredRequest(conn net.Conn) {
-	// Read command and server URL
 	scanner := bufio.NewScanner(conn)
 	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading command: %v\n", err)
+		}
 		return
 	}
 	command := strings.TrimSpace(scanner.Text())
 	
 	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading server URL: %v\n", err)
+		}
 		return
 	}
 	serverURL := strings.TrimSpace(scanner.Text())
 	
-	// Call native credential helper and capture output
-	creds, err := getNativeCredentials(command, serverURL)
+	creds, err := callNativeCredHelperWithOutput(command, serverURL)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Credential lookup failed for %s: %v\n", serverURL, err)
 		// Return empty credential JSON with serverURL populated
 		emptyCred := dockerCredential{
 			ServerURL: serverURL,
 			Username:  "",
 			Secret:    "",
 		}
-		credJSON, _ := json.Marshal(emptyCred)
-		conn.Write(credJSON)
+		credJSON, err := json.Marshal(emptyCred)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error marshaling empty credentials: %v\n", err)
+			return
+		}
+		if _, err := conn.Write(credJSON); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing empty credentials: %v\n", err)
+		}
 		return
 	}
 	
-	credJSON, _ := json.Marshal(creds)
-	conn.Write(credJSON)
-}
-
-// getNativeCredentials calls the native credential helper and returns parsed credentials
-func getNativeCredentials(action, serverURL string) (*dockerCredential, error) {
-	// Strip port from server URL for credential lookup (keychain doesn't store ports)
-	cleanURL := serverURL
-	if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-		// Check if this is a port (numeric after colon)
-		portPart := serverURL[idx+1:]
-		if len(portPart) > 0 && portPart[0] >= '0' && portPart[0] <= '9' {
-			cleanURL = serverURL[:idx]
-		}
-	}
-	
-	creds, err := callNativeCredHelperWithOutput(action, cleanURL)
+	credJSON, err := json.Marshal(creds)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "Error marshaling credentials: %v\n", err)
+		return
 	}
-	// Restore original serverURL in response
-	creds.ServerURL = serverURL
-	return creds, nil
+	if _, err := conn.Write(credJSON); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing credentials: %v\n", err)
+	}
 }
 
 // withCredSocket wraps command execution with credential socket lifecycle
 func withCredSocket(finchRootPath string, fn func() error) error {
-	// Start socket
-	if err := startCredSocket(finchRootPath); err != nil {
+	if err := globalCredSocket.start(finchRootPath); err != nil {
 		return err
 	}
-	
-	// Ensure cleanup
-	defer stopCredSocket()
-	
-	// Execute command (nc.ncc.Create(runArgs...).Run())
+	defer globalCredSocket.stop()
 	return fn()
 }
