@@ -24,8 +24,9 @@ func (cs *credentialSocket) start(finchRootPath string) error {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
+	// Break if already running
 	if cs.listener != nil {
-		return nil // Already running
+		return nil 
 	}
 
 	socketPath := filepath.Join(finchRootPath, "lima", "data", "finch", "sock", "creds.sock")

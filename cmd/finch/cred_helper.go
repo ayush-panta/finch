@@ -80,5 +80,6 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 		return &creds, nil
 	}
 
-	return nil, nil // Success for store/erase
+	// Nil is success for store/erase
+	return nil, nil 
 }
