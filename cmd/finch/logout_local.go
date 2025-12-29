@@ -32,12 +32,20 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Erase credentials using native helper
-	_, err = callCredentialHelper("erase", registryURL.Host, "", "")
-	if err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s: %v\n", registryURL.Host, err)
+	// Erase credentials using native helper (try both formats like login stores)
+	_, err1 := callCredentialHelper("erase", registryURL.Host, "", "")
+	
+	// Also try without port for HTTPS 443 case (like login stores)
+	var err2 error
+	if registryURL.Port() == dockerconfigresolver.StandardHTTPSPort {
+		_, err2 = callCredentialHelper("erase", registryURL.Hostname(), "", "")
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Removed login credentials for %s\n", registryURL.Host)
+	// Only show warning if both attempts failed
+	if err1 != nil && (err2 != nil || registryURL.Port() != dockerconfigresolver.StandardHTTPSPort) {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s\n", registryURL.Host)
+	}
+
+	fmt.Fprintln(cmd.OutOrStdout(), "Logout Succeeded")
 	return nil
 }
