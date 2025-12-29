@@ -32,20 +32,10 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Use custom credential store
-	credStore := newCustomCredStore()
-
 	// Erase credentials using native helper
-	errs, err := credStore.Erase(registryURL)
+	_, err = callCredentialHelper("erase", registryURL.Host, "", "")
 	if err != nil {
-		return fmt.Errorf("logout failed: %w", err)
-	}
-
-	// Handle any per-server errors
-	for server, serverErr := range errs {
-		if serverErr != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s: %v\n", server, serverErr)
-		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s: %v\n", registryURL.Host, err)
 	}
 
 	if serverAddress != "" {

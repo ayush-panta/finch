@@ -83,9 +83,6 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 		return err
 	}
 
-	// Use custom credential store
-	credStore := newCustomCredStore()
-
 	// Create credentials
 	credentials := &dockerconfigresolver.Credentials{
 		Username: username,
@@ -123,7 +120,7 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 	}
 
 	// Store credentials using native helper
-	err = credStore.Store(registryURL, credentials)
+	_, err = callCredentialHelper("store", registryURL.Host, credentials.Username, credentials.Password)
 	if err != nil {
 		return fmt.Errorf("error saving credentials: %w", err)
 	}
