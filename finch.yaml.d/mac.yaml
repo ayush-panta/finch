@@ -56,6 +56,6 @@ hostResolver:
 portForwards:
 - guestSocket: "/run/finch.sock"
   hostSocket: "{{.Dir}}/sock/finch.sock"
-- guestSocket: "/tmp/creds.sock"
+- guestSocket: "/run/creds.sock"
   hostSocket: "{{.Dir}}/sock/creds.sock"
   reverse: true
