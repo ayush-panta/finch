@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -381,11 +382,12 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 		return nil
 	}
 
-	// Get finch root path for socket - use current working directory + _output
-	finchRootPath := ""
-	if cwd, err := nc.systemDeps.GetWd(); err == nil {
-		finchRootPath = filepath.Join(cwd, "_output")
+	// Get finch root path for socket
+	execPath, err := os.Executable()
+	if err != nil {
+		return err
 	}
+	finchRootPath := filepath.Dir(filepath.Dir(execPath))
 	
 	// Wrap nerdctl execution with credential socket
 	return withCredSocket(finchRootPath, func() error {
