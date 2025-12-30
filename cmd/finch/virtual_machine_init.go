@@ -148,7 +148,7 @@ func (iva *initVMAction) ensureNativeCredentialHelpers() error {
 	}
 
 	destDir := filepath.Join(homeDir, ".finch", "cred-helpers")
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0700); err != nil {
 		return err
 	}
 

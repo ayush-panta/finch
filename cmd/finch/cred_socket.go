@@ -39,6 +39,12 @@ func (cs *credentialSocket) start(finchRootPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create credential socket: %w", err)
 	}
+	
+	// Set secure permissions on socket (owner-only access)
+	if err := os.Chmod(socketPath, 0600); err != nil {
+		return fmt.Errorf("failed to set socket permissions: %w", err)
+	}
+	
 	cs.listener = listener
 
 	go cs.handleConnections() // Accept connections in background
