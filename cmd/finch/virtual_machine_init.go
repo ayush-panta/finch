@@ -135,11 +135,9 @@ func (iva *initVMAction) run() error {
 }
 
 func (iva *initVMAction) ensureNativeCredentialHelpers() error {
-
-	// for now, keeping on by default
-	// need some way to read this from finch.yaml
+	// For now, assume finch credential helper is enabled by default
+	// THe default is available whether needed or not
 	finchEnabled := true
-
 	if !finchEnabled {
 		return nil // Skip if finch credential helper not configured
 	}
@@ -169,10 +167,17 @@ func (iva *initVMAction) ensureNativeCredentialHelpers() error {
 		return nil // Already exists
 	}
 
-	// Find source path
+	// Find finch exec install path
 	var srcPath string
-	if cwd, err := os.Getwd(); err == nil {
-		srcPath = filepath.Join(cwd, "_output", "cred-helpers", helperName)
+	if finchPath, err := os.Executable(); err == nil {
+		finchDir := filepath.Dir(finchPath) // e.g., /Applications/Finch/bin or _output/bin
+		finchRoot := filepath.Dir(finchDir) // e.g., /Applications/Finch or _output
+		srcPath = filepath.Join(finchRoot, "cred-helpers", helperName)
+	} else {
+		// Fallback to current working directory for development
+		if cwd, err := os.Getwd(); err == nil {
+			srcPath = filepath.Join(cwd, "_output", "cred-helpers", helperName)
+		}
 	}
 
 	if _, err := os.Stat(srcPath); os.IsNotExist(err) {
