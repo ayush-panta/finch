@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"syscall"
 
 	"golang.org/x/term"
 	"github.com/spf13/cobra"
@@ -85,16 +84,7 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 
 	if password == "" {
 		fmt.Fprint(stdout, "Enter Password: ")
-		fd := syscall.Stdin
-		if !term.IsTerminal(fd) {
-			tty, err := os.Open("/dev/tty")
-			if err != nil {
-				return err
-			}
-			defer tty.Close()
-			fd = int(tty.Fd())
-		}
-		bytePassword, err := term.ReadPassword(fd)
+		bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return err
 		}
