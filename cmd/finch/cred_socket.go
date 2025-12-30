@@ -56,7 +56,7 @@ func (cs *credentialSocket) stop() {
 	defer cs.mu.Unlock()
 
 	if cs.listener != nil {
-		cs.listener.Close()
+		_ = cs.listener.Close()
 		cs.listener = nil
 	}
 }
@@ -68,7 +68,7 @@ func (cs *credentialSocket) handleConnections() {
 			return // Socket closed
 		}
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			cs.handleRequest(c)
 		}(conn)
 	}
@@ -100,7 +100,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 		return
 	}
 	
-	conn.Write(credJSON)
+	_, _ = conn.Write(credJSON)
 }
 
 // withCredSocket wraps command execution with credential socket lifecycle

@@ -73,7 +73,7 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 
 	// Prompt for missing credentials
 	if username == "" {
-		fmt.Fprint(stdout, "Enter Username: ")
+		_, _ = fmt.Fprint(stdout, "Enter Username: ")
 		var input string
 		_, err := fmt.Scanln(&input)
 		if err != nil {
@@ -83,12 +83,12 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 	}
 
 	if password == "" {
-		fmt.Fprint(stdout, "Enter Password: ")
+		_, _ = fmt.Fprint(stdout, "Enter Password: ")
 		bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(stdout) // New line after password
+		_, _ = fmt.Fprintln(stdout) // New line after password
 		password = strings.TrimSpace(string(bytePassword))
 	}
 
@@ -110,7 +110,7 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 		}
 	}
 
-	fmt.Fprintln(stdout, "Login Succeeded")
+	_, _ = fmt.Fprintln(stdout, "Login Succeeded")
 	return nil
 }
 

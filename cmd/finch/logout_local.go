@@ -43,9 +43,9 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 
 	// Only show warning if both attempts failed
 	if err1 != nil && (err2 != nil || registryURL.Port() != dockerconfigresolver.StandardHTTPSPort) {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s\n", registryURL.Host)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: failed to logout from %s\n", registryURL.Host)
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "Logout Succeeded")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Logout Succeeded")
 	return nil
 }
