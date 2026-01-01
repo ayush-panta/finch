@@ -72,8 +72,10 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 	serverURL = strings.ReplaceAll(serverURL, "\r", "")
 
 	// send get command with URL through socket
+	fmt.Fprintf(os.Stderr, "[DEBUG] Sending request: get\\n%s\\n\n", serverURL)
 	_, err = conn.Write([]byte("get\n" + serverURL + "\n"))
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Failed to write to socket: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
@@ -81,8 +83,10 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 	response := make([]byte, BufferSize)
 	n, err := conn.Read(response)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Failed to read from socket: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] Received response (%d bytes): %s\n", n, string(response[:n]))
 
 	// parse response
 	var cred struct {
