@@ -217,6 +217,12 @@ func (bin *credhelperbin) Install() error {
 		}
 	}
 
+	// Create symlink in PATH
+	if err := bin.createPathSymlink(); err != nil {
+		bin.l.Warnf("Could not add %s to PATH: %v", bin.hcfg.binaryName, err)
+		// Don't fail installation if symlink fails
+	}
+
 	return nil
 }
 
@@ -265,4 +271,47 @@ var binaryInstalled = func(bin *credhelperbin) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// createPathSymlink creates a symlink in /usr/local/bin to make the credential helper available in PATH
+func (bin *credhelperbin) createPathSymlink() error {
+	target := bin.fullInstallPath()
+	link := filepath.Join("/usr/local/bin", bin.hcfg.binaryName)
+	
+	// Ensure /usr/local/bin exists
+	if err := os.MkdirAll("/usr/local/bin", 0o755); err != nil {
+		return fmt.Errorf("failed to create /usr/local/bin: %w", err)
+	}
+	
+	// Remove existing symlink if it exists
+	if _, err := os.Lstat(link); err == nil {
+		if err := os.Remove(link); err != nil {
+			return fmt.Errorf("failed to remove existing symlink: %w", err)
+		}
+	}
+	
+	// Create new symlink
+	if err := os.Symlink(target, link); err != nil {
+		return fmt.Errorf("failed to create symlink: %w", err)
+	}
+	
+	bin.l.Infof("Added %s to PATH at %s", bin.hcfg.binaryName, link)
+	return nil
+}
+
+// removePathSymlink removes the symlink from /usr/local/bin
+func (bin *credhelperbin) removePathSymlink() error {
+	link := filepath.Join("/usr/local/bin", bin.hcfg.binaryName)
+	
+	if _, err := os.Lstat(link); err != nil {
+		// Symlink doesn't exist, nothing to do
+		return nil
+	}
+	
+	if err := os.Remove(link); err != nil {
+		return fmt.Errorf("failed to remove symlink: %w", err)
+	}
+	
+	bin.l.Infof("Removed %s from PATH", bin.hcfg.binaryName)
+	return nil
 }

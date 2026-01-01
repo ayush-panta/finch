@@ -27,7 +27,7 @@ type dockerCredential struct {
 }
 
 func getHelperPath() (string, error) {
-	// First try configured helpers from finch config
+	// First try configured helper from config.json
 	if path, err := tryConfiguredCredentialHelpers(); err == nil {
 		return path, nil
 	}
@@ -37,7 +37,7 @@ func getHelperPath() (string, error) {
 		return path, nil
 	}
 
-	return "", fmt.Errorf("no credential helper found")
+	return "", fmt.Errorf("no credential helper found - please install docker-credential-osxkeychain or configure a helper in ~/.finch/config.json")
 }
 
 func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {
@@ -115,18 +115,8 @@ func tryConfiguredCredentialHelpers() (string, error) {
 		helperName += ".exe"
 	}
 
-	// Look in system PATH first
-	if path, err := exec.LookPath(helperName); err == nil {
-		return path, nil
-	}
-
-	// Fall back to finch creds-helpers directory
-	finchDir := filepath.Dir(filepath.Dir(configPath))
-	credsHelperPath := filepath.Join(finchDir, "creds-helpers", helperName)
-	if isValidBinary(credsHelperPath) {
-		return credsHelperPath, nil
-	}
-	return "", fmt.Errorf("credential helper %s not found", helperName)
+	// Look in system PATH only
+	return exec.LookPath(helperName)
 }
 
 func getDockerConfigPath() (string, error) {

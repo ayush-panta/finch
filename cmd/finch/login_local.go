@@ -76,9 +76,12 @@ func loginWithNativeCredStore(serverAddress, username, password string, stdout i
 		var input string
 		_, err := fmt.Scanln(&input)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read username: %w", err)
 		}
 		username = strings.TrimSpace(input)
+		if username == "" {
+			return errors.New("username cannot be empty")
+		}
 	}
 
 	if password == "" {
