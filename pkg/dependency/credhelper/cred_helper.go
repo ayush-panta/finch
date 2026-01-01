@@ -107,7 +107,7 @@ func addNativeCredHelpers(configs map[string]helperConfig, installFolder, finchP
 		configs["osxkeychain"] = helperConfig{
 			binaryName:    "docker-credential-osxkeychain",
 			credHelperURL: "https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-osxkeychain-v0.9.4.darwin-arm64",
-			hash:          "sha256:123e810d1705b17fb0195f7e640e5a2f5f04058a121041343d394d480027201a752c328ff1aa28fcdecbb3e544394e4f8edf0dac03b6c3845d9b1a0874514053",
+			hash:          "sha256:8db5b7cbcbe0870276e56aa416416161785e450708af64cda0f1be4c392dc2e5",
 			installFolder: installFolder,
 			finchPath:     finchPath,
 		}
@@ -115,7 +115,7 @@ func addNativeCredHelpers(configs map[string]helperConfig, installFolder, finchP
 		configs["osxkeychain"] = helperConfig{
 			binaryName:    "docker-credential-osxkeychain",
 			credHelperURL: "https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-osxkeychain-v0.9.4.darwin-amd64",
-			hash:          "sha256:21fe706c5044f990d333b065a8e99e80fdf63c8a8c3b3f8f178791a0412bf1d359878c906cc732d8fd8b69a5546a8dc3a3a6c8902a2f84609d0326f93c11a31f",
+			hash:          "sha256:ad76d1a1e03def49edfa57fdb2874adf2c468cfa0438aae1b2589434796f7c01",
 			installFolder: installFolder,
 			finchPath:     finchPath,
 		}
@@ -125,7 +125,7 @@ func addNativeCredHelpers(configs map[string]helperConfig, installFolder, finchP
 	configs["wincred"] = helperConfig{
 		binaryName:    "docker-credential-wincred.exe",
 		credHelperURL: "https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-wincred-v0.9.4.windows-amd64.exe",
-		hash:          "sha256:ce9c9c2e3119e91edc2c20b564d5f8929b8052f3ed0b3c1e2bfcb74bffecd2f38b11d590ee6f8124bb21f40c6a959958a6d325648d9e06c6e256c05f8e3491a3",
+		hash:          "sha256:66fdf4b50c83aeb04a9ea04af960abaf1a7b739ab263115f956b98bb0d16aa7e",
 		installFolder: installFolder,
 		finchPath:     finchPath,
 	}
