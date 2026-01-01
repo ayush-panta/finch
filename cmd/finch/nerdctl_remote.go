@@ -340,6 +340,10 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	var additionalEnv []string
+	// Get finch directory for credential helper
+	homeDir, _ := os.UserHomeDir()
+	finchDir := filepath.Join(homeDir, ".finch")
+	additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
 	needsCredentials := false
 	switch cmdName {
 	case "image":

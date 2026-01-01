@@ -90,17 +90,15 @@ func addLineToBashrc(fs afero.Fs, profileFilePath string, profStr string, cmd st
 
 func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir string) error {
 	cmdArr := []string{
-		`export DOCKER_CONFIG="$FINCH_DIR"`,
+		`export DOCKER_CONFIG="$FINCH_DIR/vm-config"`,
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
-	}
-
-	//nolint:gosec // G101: Potential hardcoded credentials false positive
-	const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
-  (echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
-  ([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
-
-	for _, credHelper := range fc.CredsHelpers {
-		cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+		// Install finchhost credential helper
+		`[ -L /usr/local/bin/docker-credential-finchhost ] || sudo ln -sf "$FINCH_DIR"/cred-helpers/docker-credential-finchhost /usr/local/bin/docker-credential-finchhost`,
+		// Create VM config directory and file
+		`mkdir -p "$FINCH_DIR/vm-config"`,
+		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
+		// Export FINCH_DIR globally for all processes
+		`echo "export FINCH_DIR=$FINCH_DIR" | sudo tee -a /etc/environment`,
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)

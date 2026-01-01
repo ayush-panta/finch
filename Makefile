@@ -176,6 +176,28 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
+	# Build Linux version for VM and copy to .finch
+	GOOS=linux GOARCH=$(shell go env GOARCH) $(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/docker-credential-finchhost $(PACKAGE)/cmd/finchhost-credential-helper
+	mkdir -p ~/.finch/cred-helpers
+	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
+
+# .PHONY: install-docker-redential-helpers
+# install-docker-credential-helpers:
+# ifeq ($(BUILD_OS), Darwin)
+# 	# Install macOS credential helper
+# 	$(MAKE) -C $(FINCH_CORE_DIR) install.docker-credential-helpers-macos OUTDIR=$(OUTDIR)
+# 	mkdir -p ~/.finch/cred-helpers
+# 	cp $(OUTDIR)/dependencies/docker-credential-osxkeychain ~/.finch/cred-helpers/ 2>/dev/null || true
+# 	# Install to system PATH
+# 	sudo ln -sf $(OUTDIR)/dependencies/docker-credential-osxkeychain /usr/local/bin/ 2>/dev/null || true
+# else ifeq ($(BUILD_OS), Windows_NT)
+# 	# Install Windows credential helper
+# 	$(MAKE) -C $(FINCH_CORE_DIR) install.docker-credential-helpers-windows OUTDIR=$(OUTDIR)
+# 	mkdir -p ~/.finch/cred-helpers
+# 	cp $(OUTDIR)/dependencies/docker-credential-wincred.exe ~/.finch/cred-helpers/ 2>/dev/null || true
+# 	# Install to Windows system PATH (C:\Windows\System32 is always in PATH)
+# 	cp $(OUTDIR)/dependencies/docker-credential-wincred.exe /c/Windows/System32/ 2>/dev/null || true
+# endif
 
 .PHONY: release
 release: check-licenses all download-licenses

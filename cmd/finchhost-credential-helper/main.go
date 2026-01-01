@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/docker/docker-credential-helpers/credentials"
@@ -38,26 +37,35 @@ func (h FinchHostCredentialHelper) List() (map[string]string, error) {
 
 // Get retrieves credentials via socket to host.
 func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error) {
+	// Debug output to stderr so it doesn't interfere with credential output
+	fmt.Fprintf(os.Stderr, "[DEBUG] finchhost-credential-helper called for: %s\n", serverURL)
+	
 	finchDir := os.Getenv("FINCH_DIR")
 	if finchDir == "" {
+		fmt.Fprintf(os.Stderr, "[DEBUG] FINCH_DIR not set\n")
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] FINCH_DIR: %s\n", finchDir)
 
 	var credentialSocketPath string
-	if runtime.GOOS == "darwin" {
-		credentialSocketPath = "/run/finch-user-sockets/creds.sock"
-	} else if runtime.GOOS == "windows" {
+	// Detect if running in WSL (Windows) or native Linux (macOS VM)
+	if strings.Contains(os.Getenv("PATH"), "/mnt/c") || os.Getenv("WSL_DISTRO_NAME") != "" {
+		// Windows WSL - use direct mount
 		credentialSocketPath = filepath.Join(finchDir, "lima", "data", "finch", "sock", "creds.sock")
 	} else {
-		return "", "", credentials.NewErrCredentialsNotFound()
+		// macOS VM - use reverse port forwarded socket
+		credentialSocketPath = "/run/finch-user-sockets/creds.sock"
 	}
+	fmt.Fprintf(os.Stderr, "[DEBUG] Socket path: %s\n", credentialSocketPath)
 
 	// connect to socket
 	conn, err := net.Dial("unix", credentialSocketPath)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Socket connection failed: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 	defer conn.Close()
+	fmt.Fprintf(os.Stderr, "[DEBUG] Socket connected successfully\n")
 
 	// sanitize server URL
 	serverURL = strings.ReplaceAll(serverURL, "\n", "")
