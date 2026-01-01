@@ -66,7 +66,6 @@ func newDeps(
 	configs := map[string]helperConfig{}
 	installFolder := filepath.Join(finchDir, "cred-helpers")
 
-	// ECR Login helper
 	const versionEcr = "0.9.0"
 	const hashARM64 = "sha256:76aa3bb223d4e64dd4456376334273f27830c8d818efe278ab6ea81cb0844420"
 	const hashAMD64 = "sha256:dd6bd933e439ddb33b9f005ad5575705a243d4e1e3d286b6c82928bcb70e949a"
@@ -85,9 +84,8 @@ func newDeps(
 	} else {
 		hcEcr.hash = hashAMD64
 	}
+
 	configs["ecr-login"] = hcEcr
-
-
 
 	for _, helper := range fc.CredsHelpers {
 		if configs[helper] != (helperConfig{}) {
@@ -98,5 +96,3 @@ func newDeps(
 
 	return deps
 }
-
-
