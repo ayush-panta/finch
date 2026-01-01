@@ -79,7 +79,7 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+remote-all: arch-test install.finch-core-dependencies finch finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -176,8 +176,9 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
-	# Build Linux version for VM and copy to .finch
+	# Build Linux version for VM
 	GOOS=linux GOARCH=$(shell go env GOARCH) $(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/docker-credential-finchhost $(PACKAGE)/cmd/finchhost-credential-helper
+	# Copy to .finch/cred-helpers for VM mount access
 	mkdir -p ~/.finch/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
 	# Install credential helpers to PATH

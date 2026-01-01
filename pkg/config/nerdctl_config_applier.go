@@ -98,7 +98,7 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`mkdir -p "$FINCH_DIR/vm-config"`,
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
 		// Export FINCH_DIR globally for all processes
-		`echo "export FINCH_DIR=$FINCH_DIR" | sudo tee -a /etc/environment`,
+		`echo "export FINCH_DIR=$FINCH_DIR" | sudo tee -a /etc/environment > /dev/null`,
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)

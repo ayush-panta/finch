@@ -87,8 +87,7 @@ func newDeps(
 	}
 	configs["ecr-login"] = hcEcr
 
-	// Native credential helpers (osxkeychain, wincred)
-	addNativeCredHelpers(configs, installFolder, finchDir, arch)
+
 
 	for _, helper := range fc.CredsHelpers {
 		if configs[helper] != (helperConfig{}) {
@@ -100,33 +99,4 @@ func newDeps(
 	return deps
 }
 
-// addNativeCredHelpers adds osxkeychain and wincred helpers using finch-core config
-func addNativeCredHelpers(configs map[string]helperConfig, installFolder, finchPath, arch string) {
-	// macOS osxkeychain helper
-	if arch == "arm64" {
-		configs["osxkeychain"] = helperConfig{
-			binaryName:    "docker-credential-osxkeychain",
-			credHelperURL: "https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-osxkeychain-v0.9.4.darwin-arm64",
-			hash:          "sha256:8db5b7cbcbe0870276e56aa416416161785e450708af64cda0f1be4c392dc2e5",
-			installFolder: installFolder,
-			finchPath:     finchPath,
-		}
-	} else {
-		configs["osxkeychain"] = helperConfig{
-			binaryName:    "docker-credential-osxkeychain",
-			credHelperURL: "https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-osxkeychain-v0.9.4.darwin-amd64",
-			hash:          "sha256:ad76d1a1e03def49edfa57fdb2874adf2c468cfa0438aae1b2589434796f7c01",
-			installFolder: installFolder,
-			finchPath:     finchPath,
-		}
-	}
 
-	// Windows wincred helper
-	configs["wincred"] = helperConfig{
-		binaryName:    "docker-credential-wincred.exe",
-		credHelperURL: "https://github.com/docker/docker-credential-helpers/releases/download/v0.9.4/docker-credential-wincred-v0.9.4.windows-amd64.exe",
-		hash:          "sha256:66fdf4b50c83aeb04a9ea04af960abaf1a7b739ab263115f956b98bb0d16aa7e",
-		installFolder: installFolder,
-		finchPath:     finchPath,
-	}
-}
