@@ -180,6 +180,25 @@ finch-all:
 	GOOS=linux GOARCH=$(shell go env GOARCH) $(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/docker-credential-finchhost $(PACKAGE)/cmd/finchhost-credential-helper
 	mkdir -p ~/.finch/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
+	# Install credential helpers to PATH
+ifeq ($(GOOS),darwin)
+	@if [ -f "$(OUTDIR)/cred-helpers/docker-credential-osxkeychain" ]; then \
+		sudo cp $(OUTDIR)/cred-helpers/docker-credential-osxkeychain /usr/local/bin/ && \
+		sudo chmod +x /usr/local/bin/docker-credential-osxkeychain && \
+		echo "Installed docker-credential-osxkeychain to /usr/local/bin"; \
+	else \
+		echo "Warning: docker-credential-osxkeychain not found in $(OUTDIR)/cred-helpers"; \
+	fi
+else ifeq ($(GOOS),windows)
+	@powershell -Command "if (Test-Path '$(OUTDIR)/cred-helpers/docker-credential-wincred.exe') { \
+		New-Item -ItemType Directory -Force -Path '$$env:LOCALAPPDATA\finch\bin'; \
+		Copy-Item '$(OUTDIR)/cred-helpers/docker-credential-wincred.exe' '$$env:LOCALAPPDATA\finch\bin\'; \
+		Write-Host 'Installed docker-credential-wincred.exe to $$env:LOCALAPPDATA\finch\bin'; \
+		Write-Host 'Add $$env:LOCALAPPDATA\finch\bin to your PATH environment variable'; \
+	} else { \
+		Write-Host 'Warning: docker-credential-wincred.exe not found in $(OUTDIR)/cred-helpers'; \
+	}"
+endif
 
 .PHONY: release
 release: check-licenses all download-licenses

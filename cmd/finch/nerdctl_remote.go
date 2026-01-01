@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/runfinch/finch/pkg/bridge-credhelper"
 	"github.com/runfinch/finch/pkg/command"
 	"github.com/runfinch/finch/pkg/config"
 	"github.com/runfinch/finch/pkg/flog"
@@ -395,7 +396,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 		finchRootPath := filepath.Dir(filepath.Dir(execPath))
 		
 		// Wrap nerdctl execution with credential socket
-		return withCredSocket(finchRootPath, func() error {
+		return bridgecredhelper.WithCredSocket(finchRootPath, func() error {
 			return nc.ncc.Create(runArgs...).Run()
 		})
 	}
