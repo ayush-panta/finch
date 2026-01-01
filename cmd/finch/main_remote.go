@@ -125,9 +125,6 @@ var newApp = func(
 		virtualMachineCommands(logger, fp, ncc, ecc, fs, fc, home, finchRootPath),
 		newSupportBundleCommand(logger, supportBundleBuilder, ncc),
 		newGenDocsCommand(rootCmd, logger, fs, system.NewStdLib()),
-		// Host-only credential commands
-		newLoginCommand(),
-		newLogoutCommand(),
 	)
 
 	rootCmd.AddCommand(allCommands...)

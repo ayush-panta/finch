@@ -89,18 +89,44 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	}
 	serverURL := strings.TrimSpace(scanner.Text())
 	
-	// Get credentials from native helper using PATH
-	creds, err := callCredentialHelper(command, serverURL, "", "")
-	if err != nil {
-		creds = &dockerCredential{ServerURL: serverURL} // Return empty creds
+	var username, password string
+	
+	// For store operations, read username and password
+	if command == "store" {
+		if !scanner.Scan() {
+			return
+		}
+		username = strings.TrimSpace(scanner.Text())
+		
+		if !scanner.Scan() {
+			return
+		}
+		password = strings.TrimSpace(scanner.Text())
 	}
 	
-	credJSON, err := json.Marshal(creds)
+	// Call credential helper
+	creds, err := callCredentialHelper(command, serverURL, username, password)
 	if err != nil {
-		return
+		if command == "get" {
+			creds = &dockerCredential{ServerURL: serverURL} // Return empty creds for get
+		} else {
+			// For store/erase, write error response
+			_, _ = conn.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
+			return
+		}
 	}
 	
-	_, _ = conn.Write(credJSON)
+	// For get operations, return credentials as JSON
+	if command == "get" {
+		credJSON, err := json.Marshal(creds)
+		if err != nil {
+			return
+		}
+		_, _ = conn.Write(credJSON)
+	} else {
+		// For store/erase operations, return success
+		_, _ = conn.Write([]byte("ok"))
+	}
 }
 
 // withCredSocket wraps command execution with credential socket lifecycle.
