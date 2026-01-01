@@ -89,7 +89,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	}
 	serverURL := strings.TrimSpace(scanner.Text())
 	
-	// Get credentials from native helper
+	// Get credentials from native helper using PATH
 	creds, err := callCredentialHelper(command, serverURL, "", "")
 	if err != nil {
 		creds = &dockerCredential{ServerURL: serverURL} // Return empty creds

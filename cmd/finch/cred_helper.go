@@ -5,9 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -19,11 +17,6 @@ type dockerCredential struct {
 }
 
 func getHelperPath() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
-
 	var helperName string
 	switch runtime.GOOS {
 	case "darwin":
@@ -34,12 +27,13 @@ func getHelperPath() (string, error) {
 		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
-	helperPath := filepath.Join(homeDir, ".finch", "cred-helpers", helperName)
-	if _, err := os.Stat(helperPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("credential helper not found: %s", helperPath)
+	// Look in system PATH
+	path, err := exec.LookPath(helperName)
+	if err != nil {
+		return "", fmt.Errorf("credential helper %s not found in PATH", helperName)
 	}
 
-	return helperPath, nil
+	return path, nil
 }
 
 func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {
@@ -48,7 +42,6 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 		return nil, err
 	}
 
-	// #nosec G204 - helperPath is validated and comes from trusted source
 	cmd := exec.Command(helperPath, action)
 
 	// Set input based on action
@@ -81,6 +74,5 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 		return &creds, nil
 	}
 
-	// Nil is success for store/erase
 	return nil, nil
 }
