@@ -17,7 +17,8 @@ import (
 )
 
 type dockerConfig struct {
-	CredsStore string `json:"credsStore"`
+	CredsStore  string            `json:"credsStore"`
+	CredHelpers map[string]string `json:"credHelpers"`
 }
 
 type dockerCredential struct {
@@ -26,9 +27,9 @@ type dockerCredential struct {
 	Secret    string `json:"Secret"`
 }
 
-func getHelperPath() (string, error) {
-	// First try configured helper from config.json
-	if path, err := tryConfiguredCredentialHelpers(); err == nil {
+func getHelperPath(serverURL string) (string, error) {
+	// First try configured helper from config.json (handles both credHelpers and credsStore)
+	if path, err := tryConfiguredCredentialHelpers(serverURL); err == nil {
 		return path, nil
 	}
 
@@ -41,7 +42,7 @@ func getHelperPath() (string, error) {
 }
 
 func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {
-	helperPath, err := getHelperPath()
+	helperPath, err := getHelperPath(serverURL)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func tryDefaultCredentialHelper() (string, error) {
 	return exec.LookPath(helperName)
 }
 
-func tryConfiguredCredentialHelpers() (string, error) {
+func tryConfiguredCredentialHelpers(serverURL string) (string, error) {
 	configPath, err := getDockerConfigPath()
 	if err != nil {
 		return "", err
@@ -106,6 +107,21 @@ func tryConfiguredCredentialHelpers() (string, error) {
 		return "", err
 	}
 
+	// Extract registry hostname from serverURL
+	registryHost := extractRegistryHost(serverURL)
+	
+	// First check credHelpers for registry-specific helper
+	if cfg.CredHelpers != nil {
+		if helperName, exists := cfg.CredHelpers[registryHost]; exists {
+			fullHelperName := "docker-credential-" + helperName
+			if runtime.GOOS == "windows" {
+				fullHelperName += ".exe"
+			}
+			return exec.LookPath(fullHelperName)
+		}
+	}
+
+	// Fallback to global credsStore
 	if cfg.CredsStore == "" {
 		return "", fmt.Errorf("no credStore configured")
 	}
@@ -115,8 +131,20 @@ func tryConfiguredCredentialHelpers() (string, error) {
 		helperName += ".exe"
 	}
 
-	// Look in system PATH only
 	return exec.LookPath(helperName)
+}
+
+func extractRegistryHost(serverURL string) string {
+	// Remove protocol if present
+	host := strings.TrimPrefix(serverURL, "https://")
+	host = strings.TrimPrefix(host, "http://")
+	
+	// Remove port if present
+	if idx := strings.Index(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+	
+	return host
 }
 
 func getDockerConfigPath() (string, error) {
@@ -145,7 +173,3 @@ func loadDockerConfig(configPath string) (*dockerConfig, error) {
 	return &cfg, nil
 }
 
-func isValidBinary(path string) bool {
-	info, err := afero.NewOsFs().Stat(path)
-	return err == nil && info.Size() > 0
-}
