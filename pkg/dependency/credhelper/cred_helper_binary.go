@@ -135,6 +135,47 @@ func (bin *credhelperbin) configFileInstalled() (bool, error) {
 	return credsStore == binCfgName, nil
 }
 
+// GetCredentialHelperForServer returns the credential helper name for a given server URL
+// by reading the config.json file and checking credHelpers and credsStore
+func GetCredentialHelperForServer(serverURL, finchPath string) (string, error) {
+	cfgPath := filepath.Join(finchPath, "config.json")
+	fs := afero.NewOsFs()
+	
+	if exists, _ := afero.Exists(fs, cfgPath); !exists {
+		return "", fmt.Errorf("config file not found")
+	}
+	
+	fileRead, err := fs.Open(cfgPath)
+	if err != nil {
+		return "", err
+	}
+	defer fileRead.Close()
+	
+	bytes, err := afero.ReadAll(fileRead)
+	if err != nil {
+		return "", err
+	}
+	
+	var cfg configfile.ConfigFile
+	if err := json.Unmarshal(bytes, &cfg); err != nil {
+		return "", err
+	}
+	
+	// Check credHelpers first (registry-specific)
+	if cfg.CredentialHelpers != nil {
+		if helper, exists := cfg.CredentialHelpers[serverURL]; exists {
+			return helper, nil
+		}
+	}
+	
+	// Fall back to credsStore (default)
+	if cfg.CredentialsStore != "" {
+		return cfg.CredentialsStore, nil
+	}
+	
+	return "", fmt.Errorf("no credential helper configured")
+}
+
 // credHelperConfigName returns the name of the credential helper binary that will be used
 // inside the config.json.
 func (bin *credhelperbin) credHelperConfigName() string {

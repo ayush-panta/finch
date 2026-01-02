@@ -20,85 +20,17 @@ const BufferSize = 4096
 // FinchHostCredentialHelper implements the credentials.Helper interface.
 type FinchHostCredentialHelper struct{}
 
-// Add stores credentials via socket to host.
-func (h FinchHostCredentialHelper) Add(creds *credentials.Credentials) error {
-	finchDir := os.Getenv("FINCH_DIR")
-	if finchDir == "" {
-		return fmt.Errorf("FINCH_DIR not set")
-	}
-
-	var credentialSocketPath string
-	if strings.Contains(os.Getenv("PATH"), "/mnt/c") || os.Getenv("WSL_DISTRO_NAME") != "" {
-		credentialSocketPath = filepath.Join(finchDir, "lima", "data", "finch", "sock", "creds.sock")
-	} else {
-		credentialSocketPath = "/run/finch-user-sockets/creds.sock"
-	}
-
-	conn, err := net.Dial("unix", credentialSocketPath)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	message := fmt.Sprintf("store\n%s\n%s\n%s\n", creds.ServerURL, creds.Username, creds.Secret)
-	_, err = conn.Write([]byte(message))
-	if err != nil {
-		return err
-	}
-
-	response := make([]byte, BufferSize)
-	n, err := conn.Read(response)
-	if err != nil {
-		return err
-	}
-
-	if strings.HasPrefix(string(response[:n]), "error:") {
-		return fmt.Errorf("credential store failed: %s", string(response[:n]))
-	}
-
-	return nil
+// Add is not implemented for Finch credential helper.
+func (h FinchHostCredentialHelper) Add(*credentials.Credentials) error {
+	return fmt.Errorf("not implemented")
 }
 
-// Delete removes credentials via socket to host.
+// Delete is not implemented for Finch credential helper.
 func (h FinchHostCredentialHelper) Delete(serverURL string) error {
-	finchDir := os.Getenv("FINCH_DIR")
-	if finchDir == "" {
-		return fmt.Errorf("FINCH_DIR not set")
-	}
-
-	var credentialSocketPath string
-	if strings.Contains(os.Getenv("PATH"), "/mnt/c") || os.Getenv("WSL_DISTRO_NAME") != "" {
-		credentialSocketPath = filepath.Join(finchDir, "lima", "data", "finch", "sock", "creds.sock")
-	} else {
-		credentialSocketPath = "/run/finch-user-sockets/creds.sock"
-	}
-
-	conn, err := net.Dial("unix", credentialSocketPath)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	message := fmt.Sprintf("erase\n%s\n", serverURL)
-	_, err = conn.Write([]byte(message))
-	if err != nil {
-		return err
-	}
-
-	response := make([]byte, BufferSize)
-	n, err := conn.Read(response)
-	if err != nil {
-		return err
-	}
-
-	if strings.HasPrefix(string(response[:n]), "error:") {
-		return fmt.Errorf("credential erase failed: %s", string(response[:n]))
-	}
-
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
-// List is not implemented.
+// List is not implemented for Finch credential helper.
 func (h FinchHostCredentialHelper) List() (map[string]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }

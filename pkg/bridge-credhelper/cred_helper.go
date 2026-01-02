@@ -5,9 +5,12 @@ package bridgecredhelper
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"github.com/runfinch/finch/pkg/dependency/credhelper"
 )
 
 type dockerCredential struct {
@@ -17,7 +20,21 @@ type dockerCredential struct {
 }
 
 func getHelperPath(serverURL string) (string, error) {
-	// Only look in PATH for credential helpers
+	// Get finch directory
+	finchDir := os.Getenv("HOME") + "/.finch"
+	
+	// Use existing credhelper package to get the right helper
+	helperName, err := credhelper.GetCredentialHelperForServer(serverURL, finchDir)
+	if err != nil {
+		// Fall back to OS default if config reading fails
+		return getDefaultHelperPath()
+	}
+	
+	// Look up the binary with docker-credential- prefix
+	return exec.LookPath("docker-credential-" + helperName)
+}
+
+func getDefaultHelperPath() (string, error) {
 	var helperName string
 	switch runtime.GOOS {
 	case "darwin":
@@ -27,7 +44,7 @@ func getHelperPath(serverURL string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
-
+	
 	return exec.LookPath(helperName)
 }
 

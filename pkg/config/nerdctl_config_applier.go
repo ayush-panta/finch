@@ -97,8 +97,13 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		// Create VM config directory and file
 		`mkdir -p "$FINCH_DIR/vm-config"`,
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
-		// Export FINCH_DIR globally for all processes
-		`echo "export FINCH_DIR=$FINCH_DIR" | sudo tee -a /etc/environment > /dev/null`,
+	}
+
+	// Use the first credhelper in the list in finch.yaml
+	// If user removed all for some reason, will do nothing
+	// Only create config.json if it doesn't already exist
+	if len(fc.CredsHelpers) > 0 {
+		cmdArr = append(cmdArr, fmt.Sprintf(`[ ! -f "$FINCH_DIR"/config.json ] && echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, fc.CredsHelpers[0]))
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)

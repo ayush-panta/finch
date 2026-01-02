@@ -31,7 +31,7 @@ import (
 
 	"github.com/containerd/log"
 
-	"github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
+	// "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
 )
@@ -52,10 +52,9 @@ func newLoginLocalCommand(_ interface{}, _ interface{}) *cobra.Command {
 }
 
 func loginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
-	globalOptions, err := helpers.ProcessRootCmdFlags(cmd)
-	if err != nil {
-		return types.LoginCommandOptions{}, err
-	}
+
+	// Simple global options without importing nerdctl/helpers -> go mod error
+	globalOptions := types.GlobalCommandOptions{}
 
 	username, err := cmd.Flags().GetString("username")
 	if err != nil {
@@ -108,7 +107,12 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 1 {
-		options.ServerAddress = args[0]
+		// Normalize server address by removing default HTTPS port
+		serverAddr := args[0]
+		if strings.HasSuffix(serverAddr, ":443") {
+			serverAddr = strings.TrimSuffix(serverAddr, ":443")
+		}
+		options.ServerAddress = serverAddr
 	}
 
 	return login.Login(cmd.Context(), options, cmd.OutOrStdout())
