@@ -6,20 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/spf13/afero"
-
-	"github.com/runfinch/finch/pkg/path"
-	"github.com/runfinch/finch/pkg/system"
 )
-
-type dockerConfig struct {
-	CredsStore  string            `json:"credsStore"`
-	CredHelpers map[string]string `json:"credHelpers"`
-}
 
 type dockerCredential struct {
 	ServerURL string `json:"ServerURL"`
@@ -28,17 +17,18 @@ type dockerCredential struct {
 }
 
 func getHelperPath(serverURL string) (string, error) {
-	// First try configured helper from config.json (handles both credHelpers and credsStore)
-	if path, err := tryConfiguredCredentialHelpers(serverURL); err == nil {
-		return path, nil
+	// Only look in PATH for credential helpers
+	var helperName string
+	switch runtime.GOOS {
+	case "darwin":
+		helperName = "docker-credential-osxkeychain"
+	case "windows":
+		helperName = "docker-credential-wincred.exe"
+	default:
+		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
-	// Then try default OS credential helper in PATH
-	if path, err := tryDefaultCredentialHelper(); err == nil {
-		return path, nil
-	}
-
-	return "", fmt.Errorf("no credential helper found - please install docker-credential-osxkeychain or configure a helper in ~/.finch/config.json")
+	return exec.LookPath(helperName)
 }
 
 func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {
@@ -82,94 +72,5 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 	return nil, nil
 }
 
-func tryDefaultCredentialHelper() (string, error) {
-	var helperName string
-	switch runtime.GOOS {
-	case "darwin":
-		helperName = "docker-credential-osxkeychain"
-	case "windows":
-		helperName = "docker-credential-wincred.exe"
-	default:
-		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
-	}
 
-	return exec.LookPath(helperName)
-}
-
-func tryConfiguredCredentialHelpers(serverURL string) (string, error) {
-	configPath, err := getDockerConfigPath()
-	if err != nil {
-		return "", err
-	}
-
-	cfg, err := loadDockerConfig(configPath)
-	if err != nil {
-		return "", err
-	}
-
-	// Extract registry hostname from serverURL
-	registryHost := extractRegistryHost(serverURL)
-	
-	// First check credHelpers for registry-specific helper
-	if cfg.CredHelpers != nil {
-		if helperName, exists := cfg.CredHelpers[registryHost]; exists {
-			fullHelperName := "docker-credential-" + helperName
-			if runtime.GOOS == "windows" {
-				fullHelperName += ".exe"
-			}
-			return exec.LookPath(fullHelperName)
-		}
-	}
-
-	// Fallback to global credsStore
-	if cfg.CredsStore == "" {
-		return "", fmt.Errorf("no credStore configured")
-	}
-
-	helperName := "docker-credential-" + cfg.CredsStore
-	if runtime.GOOS == "windows" {
-		helperName += ".exe"
-	}
-
-	return exec.LookPath(helperName)
-}
-
-func extractRegistryHost(serverURL string) string {
-	// Remove protocol if present
-	host := strings.TrimPrefix(serverURL, "https://")
-	host = strings.TrimPrefix(host, "http://")
-	
-	// Remove port if present
-	if idx := strings.Index(host, ":"); idx != -1 {
-		host = host[:idx]
-	}
-	
-	return host
-}
-
-func getDockerConfigPath() (string, error) {
-	stdLib := system.NewStdLib()
-	home, err := stdLib.GetUserHome()
-	if err != nil {
-		return "", err
-	}
-	fp := path.Finch("")
-	finchDir := fp.FinchDir(home)
-	return filepath.Join(finchDir, "config.json"), nil
-}
-
-func loadDockerConfig(configPath string) (*dockerConfig, error) {
-	fs := afero.NewOsFs()
-	b, err := afero.ReadFile(fs, configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var cfg dockerConfig
-	if err := json.Unmarshal(b, &cfg); err != nil {
-		return nil, err
-	}
-
-	return &cfg, nil
-}
 
