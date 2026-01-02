@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/runfinch/finch/pkg/bridge-credhelper"
 	"github.com/runfinch/finch/pkg/command"
 	"github.com/runfinch/finch/pkg/config"
 	"github.com/runfinch/finch/pkg/flog"
@@ -339,17 +341,25 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	var additionalEnv []string
+	// Get finch directory for credential helper
+	homeDir, _ := os.UserHomeDir()
+	finchDir := filepath.Join(homeDir, ".finch")
+	additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
+	needsCredentials := false
 	switch cmdName {
 	case "image":
 		if slices.Contains(args, "build") || slices.Contains(args, "pull") || slices.Contains(args, "push") {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
+			needsCredentials = true
 		}
 	case "container":
-		if slices.Contains(args, "run") {
+		if slices.Contains(args, "run") || slices.Contains(args, "create") {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
+			needsCredentials = true
 		}
-	case "build", "pull", "push", "container run":
+	case "build", "pull", "push", "run", "create", "container run", "login", "logout":
 		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
+		needsCredentials = true
 	}
 
 	// Add -E to sudo command in order to preserve existing environment variables, more info:
@@ -375,6 +385,20 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 
 	if err := handleDockerCompatComposeVersion(cmdName, *nc, cmdArgs); err == nil {
 		return nil
+	}
+
+	if needsCredentials {
+		// Get finch root path for socket
+		execPath, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		finchRootPath := filepath.Dir(filepath.Dir(execPath))
+		
+		// Wrap nerdctl execution with credential socket
+		return bridgecredhelper.WithCredSocket(finchRootPath, func() error {
+			return nc.ncc.Create(runArgs...).Run()
+		})
 	}
 
 	return nc.ncc.Create(runArgs...).Run()
