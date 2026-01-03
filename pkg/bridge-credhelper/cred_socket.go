@@ -39,12 +39,12 @@ func (cs *credentialSocket) start(finchRootPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create credential socket: %w", err)
 	}
-	
+
 	// Set secure permissions on socket (owner-only access)
 	if err := os.Chmod(socketPath, 0600); err != nil {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
-	
+
 	cs.listener = listener
 
 	go cs.handleConnections() // Accept connections in background
@@ -76,34 +76,34 @@ func (cs *credentialSocket) handleConnections() {
 
 func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	scanner := bufio.NewScanner(conn)
-	
+
 	// Read command (get/store/erase)
 	if !scanner.Scan() {
 		return
 	}
 	command := strings.TrimSpace(scanner.Text())
-	
+
 	// Read server URL
 	if !scanner.Scan() {
 		return
 	}
 	serverURL := strings.TrimSpace(scanner.Text())
-	
+
 	var username, password string
-	
+
 	// For store operations, read username and password
 	if command == "store" {
 		if !scanner.Scan() {
 			return
 		}
 		username = strings.TrimSpace(scanner.Text())
-		
+
 		if !scanner.Scan() {
 			return
 		}
 		password = strings.TrimSpace(scanner.Text())
 	}
-	
+
 	// Call credential helper
 	creds, err := callCredentialHelper(command, serverURL, username, password)
 	if err != nil {
@@ -115,7 +115,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 			return
 		}
 	}
-	
+
 	// For get operations, return credentials as JSON
 	if command == "get" {
 		credJSON, err := json.Marshal(creds)

@@ -22,14 +22,14 @@ type dockerCredential struct {
 func getHelperPath(serverURL string) (string, error) {
 	// Get finch directory
 	finchDir := os.Getenv("HOME") + "/.finch"
-	
+
 	// Use existing credhelper package to get the right helper
 	helperName, err := credhelper.GetCredentialHelperForServer(serverURL, finchDir)
 	if err != nil {
 		// Fall back to OS default if config reading fails
 		return getDefaultHelperPath()
 	}
-	
+
 	// Look up the binary with docker-credential- prefix
 	return exec.LookPath("docker-credential-" + helperName)
 }
@@ -44,7 +44,7 @@ func getDefaultHelperPath() (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
-	
+
 	return exec.LookPath(helperName)
 }
 
@@ -88,6 +88,3 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 
 	return nil, nil
 }
-
-
-
