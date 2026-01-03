@@ -346,6 +346,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	finchDir := filepath.Join(homeDir, ".finch")
 	additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
 	needsCredentials := false
+	nc.logger.Debugf("Checking credentials for cmdName='%s', args=%v", cmdName, args)
 	switch cmdName {
 	case "image":
 		if slices.Contains(args, "build") || slices.Contains(args, "pull") || slices.Contains(args, "push") {
@@ -357,10 +358,16 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
 			needsCredentials = true
 		}
+	case "container run", "container create":
+		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
+		needsCredentials = true
+		nc.logger.Debugf("Setting needsCredentials=true for cmdName=%s", cmdName)
 	case "build", "pull", "push", "run", "create":
 		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
 		needsCredentials = true
+		nc.logger.Debugf("Setting needsCredentials=true for cmdName=%s", cmdName)
 	}
+	nc.logger.Debugf("Final needsCredentials=%t for cmdName='%s'", needsCredentials, cmdName)
 
 	// Add -E to sudo command in order to preserve existing environment variables, more info:
 	// https://stackoverflow.com/questions/8633461/how-to-keep-environment-variables-when-using-sudo/8633575#8633575
@@ -388,12 +395,14 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	if needsCredentials {
+		nc.logger.Debugf("Opening credential socket for command: %s", cmdName)
 		// Get finch root path for socket
 		execPath, err := os.Executable()
 		if err != nil {
 			return err
 		}
 		finchRootPath := filepath.Dir(filepath.Dir(execPath))
+		nc.logger.Debugf("Using finchRootPath: %s", finchRootPath)
 
 		// Wrap nerdctl execution with credential socket
 		return bridgecredhelper.WithCredSocket(finchRootPath, func() error {
