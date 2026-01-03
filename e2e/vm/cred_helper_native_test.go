@@ -20,9 +20,17 @@ import (
 
 // setupCleanConfig creates a clean config.json with just the credential store
 func setupCleanConfig() {
-	homeDir, _ := os.UserHomeDir()
-	finchDir := filepath.Join(homeDir, ".finch")
+	var finchRootDir string
+	if runtime.GOOS == "windows" {
+		finchRootDir = os.Getenv("LOCALAPPDATA")
+	} else {
+		finchRootDir, _ = os.UserHomeDir()
+	}
+	finchDir := filepath.Join(finchRootDir, ".finch")
 	os.MkdirAll(finchDir, 0755)
+
+	// Set DOCKER_CONFIG to point to .finch directory
+	os.Setenv("DOCKER_CONFIG", finchDir)
 
 	var credStore string
 	if runtime.GOOS == "windows" {
@@ -132,6 +140,16 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			resetDisks(o, installed)
 			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
 
+			// Ensure .finch directory and config exist before login
+			var finchRootDir string
+			if runtime.GOOS == "windows" {
+				finchRootDir = os.Getenv("LOCALAPPDATA")
+			} else {
+				finchRootDir, _ = os.UserHomeDir()
+			}
+			finchDir := filepath.Join(finchRootDir, ".finch")
+			os.MkdirAll(finchDir, 0755)
+
 			command.New(o, "run", "-d", "-p", "5001:5000", "--name", "login-registry", "registry:2").Run()
 			// Wait for registry to be ready
 			time.Sleep(5 * time.Second)
@@ -140,8 +158,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			command.New(o, "login", "localhost:5001", "-u", "testuser", "-p", "testpass").Run()
 
 			// Verify config.json entry exists after login
-			homeDir, _ := os.UserHomeDir()
-			configPath := filepath.Join(homeDir, ".finch", "config.json")
+			configPath := filepath.Join(finchRootDir, ".finch", "config.json")
 			configBytes, err := os.ReadFile(configPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "should be able to read config.json")
 			gomega.Expect(string(configBytes)).To(gomega.ContainSubstring("localhost:5001"), "config should contain registry after login")
