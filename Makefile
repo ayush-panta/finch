@@ -79,7 +79,7 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+remote-all: arch-test install.finch-core-dependencies finch finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -176,6 +176,36 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
+	$(MAKE) build-credential-helper
+	$(MAKE) setup-credential-config
+
+.PHONY: build-credential-helper
+build-credential-helper:
+	# Build finchhost credential helper for VM
+	GOOS=linux GOARCH=$(shell go env GOARCH) $(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/docker-credential-finchhost $(PACKAGE)/cmd/finchhost-credential-helper
+	# Ensure .finch/cred-helpers directory exists and copy helper
+	mkdir -p ~/.finch/cred-helpers
+	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
+
+.PHONY: setup-credential-config
+setup-credential-config:
+	# Create host config.json with platform-appropriate credential store
+	mkdir -p ~/.finch
+ifeq ($(GOOS),darwin)
+	@if [ ! -f ~/.finch/config.json ]; then \
+		echo '{"credsStore": "osxkeychain"}' > ~/.finch/config.json; \
+		echo "Created ~/.finch/config.json with osxkeychain"; \
+	else \
+		echo "~/.finch/config.json already exists, skipping"; \
+	fi
+else ifeq ($(GOOS),windows)
+	@powershell -Command "if (-not (Test-Path '$$env:USERPROFILE\.finch\config.json')) { \
+		Set-Content -Path '$$env:USERPROFILE\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
+		Write-Host 'Created config.json with wincred'; \
+	} else { \
+		Write-Host 'config.json already exists, skipping'; \
+	}"
+endif
 
 .PHONY: release
 release: check-licenses all download-licenses
