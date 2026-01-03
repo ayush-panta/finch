@@ -5,9 +5,11 @@ go 1.24.11
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/containerd/cgroups v1.1.0
+	github.com/containerd/log v0.1.0
 	github.com/containerd/nerdctl/v2 v2.1.4
 	github.com/docker/cli v28.4.0+incompatible
 	github.com/docker/docker v28.4.0+incompatible
+	github.com/docker/docker-credential-helpers v0.8.2
 	github.com/docker/go-connections v0.6.0
 	github.com/google/go-licenses v1.6.1-0.20230903011517-706b9c60edd4
 	github.com/lima-vm/lima v1.2.2
@@ -52,7 +54,6 @@ require (
 	github.com/containerd/fifo v1.1.0 // indirect
 	github.com/containerd/go-cni v1.1.13 // indirect
 	github.com/containerd/imgcrypt/v2 v2.0.1 // indirect
-	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.1 // indirect
 	github.com/containerd/plugin v1.0.0 // indirect
 	github.com/containerd/stargz-snapshotter v0.17.0 // indirect
@@ -67,7 +68,6 @@ require (
 	github.com/cyphar/filepath-securejoin v0.6.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/docker-credential-helpers v0.8.2 // indirect
 	github.com/elliotchance/orderedmap v1.8.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
