@@ -181,6 +181,12 @@ finch-all:
 	# Copy to .finch/cred-helpers for VM mount access
 	mkdir -p ~/.finch/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
+	# Create default config.json for host
+ifeq ($(GOOS),darwin)
+	echo '{"credsStore": "osxkeychain"}' > ~/.finch/config.json
+else ifeq ($(GOOS),windows)
+	echo '{"credsStore": "wincred"}' > ~/.finch/config.json
+endif
 	# Install credential helpers to PATH
 ifeq ($(GOOS),darwin)
 	@if [ -f "$(OUTDIR)/cred-helpers/docker-credential-osxkeychain" ]; then \
