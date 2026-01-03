@@ -4,6 +4,7 @@ package bridgecredhelper
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -11,11 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type credentialSocket struct {
-	mu       sync.Mutex
-	listener net.Listener
+	mu            sync.Mutex
+	listener      net.Listener
+	ctx           context.Context
+	cancel        context.CancelFunc
+	finchRootPath string
 }
 
 var globalCredSocket = &credentialSocket{}
@@ -46,6 +51,8 @@ func (cs *credentialSocket) start(finchRootPath string) error {
 	}
 
 	cs.listener = listener
+	cs.finchRootPath = finchRootPath
+	cs.ctx, cs.cancel = context.WithCancel(context.Background())
 
 	go cs.handleConnections() // Accept connections in background
 	return nil
@@ -55,6 +62,9 @@ func (cs *credentialSocket) stop() {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
+	if cs.cancel != nil {
+		cs.cancel()
+	}
 	if cs.listener != nil {
 		_ = cs.listener.Close()
 		cs.listener = nil
@@ -63,12 +73,19 @@ func (cs *credentialSocket) stop() {
 
 func (cs *credentialSocket) handleConnections() {
 	for {
+		select {
+		case <-cs.ctx.Done():
+			return
+		default:
+		}
+		
 		conn, err := cs.listener.Accept()
 		if err != nil {
 			return // Socket closed
 		}
 		go func(c net.Conn) {
 			defer func() { _ = c.Close() }()
+			_ = c.SetReadDeadline(time.Now().Add(10 * time.Second))
 			cs.handleRequest(c)
 		}(conn)
 	}
@@ -105,7 +122,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	}
 
 	// Call credential helper
-	creds, err := callCredentialHelper(command, serverURL, username, password)
+	creds, err := callCredentialHelper(command, serverURL, username, password, cs.finchRootPath)
 	if err != nil {
 		if command == "get" {
 			creds = &dockerCredential{ServerURL: serverURL} // Return empty creds for get
@@ -129,7 +146,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	}
 }
 
-// withCredSocket wraps command execution with credential socket lifecycle.
+// Wraps command execution with credential socket lifecycle.
 func WithCredSocket(finchRootPath string, fn func() error) error {
 	if err := globalCredSocket.start(finchRootPath); err != nil {
 		return err

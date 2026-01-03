@@ -5,7 +5,6 @@ package bridgecredhelper
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -19,21 +18,20 @@ type dockerCredential struct {
 	Secret    string `json:"Secret"`
 }
 
-func getHelperPath(serverURL string) (string, error) {
-	// Get finch directory
-	finchDir := os.Getenv("HOME") + "/.finch"
-
-	// Use existing credhelper package to get the right helper
-	helperName, err := credhelper.GetCredentialHelperForServer(serverURL, finchDir)
-	if err != nil {
-		// Fall back to OS default if config reading fails
-		return getDefaultHelperPath()
+func getHelperPath(serverURL, finchRootPath string) (string, error) {
+	// Try configured helper first
+	helperName, err := credhelper.GetCredentialHelperForServer(serverURL, finchRootPath)
+	if err == nil {
+		if path, err := exec.LookPath("docker-credential-" + helperName); err == nil {
+			return path, nil
+		}
 	}
 
-	// Look up the binary with docker-credential- prefix
-	return exec.LookPath("docker-credential-" + helperName)
+	// Fall back to OS default
+	return getDefaultHelperPath()
 }
 
+// Allow to fall back to OS default for unlikely case when no credStore found (for robustness)
 func getDefaultHelperPath() (string, error) {
 	var helperName string
 	switch runtime.GOOS {
@@ -48,8 +46,8 @@ func getDefaultHelperPath() (string, error) {
 	return exec.LookPath(helperName)
 }
 
-func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {
-	helperPath, err := getHelperPath(serverURL)
+func callCredentialHelper(action, serverURL, username, password, finchRootPath string) (*dockerCredential, error) {
+	helperPath, err := getHelperPath(serverURL, finchRootPath)
 	if err != nil {
 		return nil, err
 	}
