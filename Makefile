@@ -176,8 +176,8 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
-	$(MAKE) build-credential-helper
-	$(MAKE) setup-credential-config
+	"$(MAKE)" build-credential-helper
+	"$(MAKE)" setup-credential-config
 
 .PHONY: build-credential-helper
 build-credential-helper:
