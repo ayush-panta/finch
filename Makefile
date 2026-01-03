@@ -186,6 +186,11 @@ build-credential-helper:
 	# Ensure .finch/cred-helpers directory exists and copy helper
 	mkdir -p ~/.finch/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
+ifeq ($(GOOS),windows)
+	# Also copy to output directory for Windows
+	mkdir -p $(OUTDIR)/cred-helpers
+	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
+endif
 
 .PHONY: setup-credential-config
 setup-credential-config:
