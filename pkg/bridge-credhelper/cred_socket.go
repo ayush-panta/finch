@@ -16,11 +16,10 @@ import (
 )
 
 type credentialSocket struct {
-	mu            sync.Mutex
-	listener      net.Listener
-	ctx           context.Context
-	cancel        context.CancelFunc
-	finchRootPath string
+	mu       sync.Mutex
+	listener net.Listener
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 var globalCredSocket = &credentialSocket{}
@@ -51,7 +50,6 @@ func (cs *credentialSocket) start(finchRootPath string) error {
 	}
 
 	cs.listener = listener
-	cs.finchRootPath = finchRootPath
 	cs.ctx, cs.cancel = context.WithCancel(context.Background())
 
 	go cs.handleConnections() // Accept connections in background
@@ -122,7 +120,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	}
 
 	// Call credential helper
-	creds, err := callCredentialHelper(command, serverURL, username, password, cs.finchRootPath)
+	creds, err := callCredentialHelper(command, serverURL, username, password)
 	if err != nil {
 		if command == "get" {
 			creds = &dockerCredential{ServerURL: serverURL} // Return empty creds for get
