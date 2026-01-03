@@ -199,8 +199,8 @@ ifeq ($(GOOS),darwin)
 		echo "~/.finch/config.json already exists, skipping"; \
 	fi
 else ifeq ($(GOOS),windows)
-	@powershell -Command "if (-not (Test-Path '$$env:USERPROFILE\.finch\config.json')) { \
-		Set-Content -Path '$$env:USERPROFILE\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
+	@powershell -Command "if (-not (Test-Path '$$$$env:USERPROFILE\.finch\config.json')) { \
+		Set-Content -Path '$$$$env:USERPROFILE\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
 		Write-Host 'Created config.json with wincred'; \
 	} else { \
 		Write-Host 'config.json already exists, skipping'; \

@@ -63,7 +63,6 @@ func TestVM(t *testing.T) {
 		// testVMPrune(o, *e2e.Installed)
 		testVMLifecycle(o)
 		testAdditionalDisk(o, *e2e.Installed)
-		// testFinchConfigFile(o)
 		testVersion(o)
 		testSupportBundle(o)
 		testCredHelper(o, *e2e.Installed, *e2e.Registry)
