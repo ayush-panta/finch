@@ -1,3 +1,5 @@
+//go:build darwin || windows
+
 /*
    Copyright The containerd Authors.
 
@@ -16,9 +18,7 @@
 
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
-// Exact copy of nerdctl logout command
-
-//go:build darwin || windows
+// Copy of nerdctl logout command with minor changes
 
 package main
 
