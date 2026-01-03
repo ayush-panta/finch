@@ -32,7 +32,7 @@ import (
 	"github.com/runfinch/finch/pkg/flog"
 )
 
-func newLogoutLocalCommand(logger flog.Logger) *cobra.Command {
+func newLogoutLocalCommand(_ flog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:               "logout [flags] [SERVER]",
 		Args:              cobra.MaximumNArgs(1),
@@ -64,7 +64,7 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func logoutShellComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func logoutShellComplete(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates, err := logout.ShellCompletion()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError

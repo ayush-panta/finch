@@ -93,7 +93,8 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`export DOCKER_CONFIG="$FINCH_DIR/vm-config"`,
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 		// Install finchhost credential helper
-		`[ -L /usr/local/bin/docker-credential-finchhost ] || sudo ln -sf "$FINCH_DIR"/cred-helpers/docker-credential-finchhost /usr/local/bin/docker-credential-finchhost`,
+		`[ -L /usr/local/bin/docker-credential-finchhost ] || ` +
+			`sudo ln -sf "$FINCH_DIR"/cred-helpers/docker-credential-finchhost /usr/local/bin/docker-credential-finchhost`,
 		// Create VM config directory and file
 		`mkdir -p "$FINCH_DIR/vm-config"`,
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
@@ -103,7 +104,8 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 	// If user removed all for some reason, will do nothing
 	// Only create config.json if it doesn't already exist
 	if len(fc.CredsHelpers) > 0 {
-		cmdArr = append(cmdArr, fmt.Sprintf(`[ ! -f "$FINCH_DIR"/config.json ] && echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, fc.CredsHelpers[0]))
+		cmdArr = append(cmdArr, fmt.Sprintf(`[ ! -f "$FINCH_DIR"/config.json ] && ` +
+			`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, fc.CredsHelpers[0]))
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)

@@ -1,5 +1,6 @@
 //go:build darwin || windows
 
+// Package bridgecredhelper provides credential helper bridge functionality for Finch.
 package bridgecredhelper
 
 import (
@@ -126,7 +127,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 			creds = &dockerCredential{ServerURL: serverURL} // Return empty creds for get
 		} else {
 			// For store/erase, write error response
-			_, _ = conn.Write([]byte(fmt.Sprintf("error: %s", err.Error())))
+			_, _ = fmt.Fprintf(conn, "error: %s", err.Error())
 			return
 		}
 	}
@@ -144,7 +145,7 @@ func (cs *credentialSocket) handleRequest(conn net.Conn) {
 	}
 }
 
-// Wraps command execution with credential socket lifecycle.
+// WithCredSocket wraps command execution with credential socket lifecycle.
 func WithCredSocket(finchRootPath string, fn func() error) error {
 	if err := globalCredSocket.start(finchRootPath); err != nil {
 		return err

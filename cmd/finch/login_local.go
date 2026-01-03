@@ -52,7 +52,6 @@ func newLoginLocalCommand(_ interface{}, _ interface{}) *cobra.Command {
 }
 
 func loginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
-
 	// Simple global options without importing nerdctl/helpers -> go mod error
 	globalOptions := types.GlobalCommandOptions{}
 
@@ -109,9 +108,7 @@ func loginAction(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		// Normalize server address by removing default HTTPS port
 		serverAddr := args[0]
-		if strings.HasSuffix(serverAddr, ":443") {
-			serverAddr = strings.TrimSuffix(serverAddr, ":443")
-		}
+		serverAddr = strings.TrimSuffix(serverAddr, ":443")
 		options.ServerAddress = serverAddr
 	}
 

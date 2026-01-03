@@ -132,7 +132,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 		})
 
 		ginkgo.It("should have secure credential helper installation", func() {
-			ginkgo.Skip("Skipping security installation test as it's environment-specific and tests build/installation details rather than runtime functionality")
+			ginkgo.Skip("Skipping security installation test as it's environment-specific and tests " +
+				"build/installation details rather than runtime functionality")
 		})
 
 		ginkgo.It("should handle finch login and logout credential operations", func() {
@@ -169,7 +170,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			// Verify config.json entry is removed after logout
 			configBytesAfter, err := os.ReadFile(configPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "should be able to read config.json")
-			gomega.Expect(string(configBytesAfter)).NotTo(gomega.ContainSubstring("localhost:5001"), "config should not contain registry after logout")
+			gomega.Expect(string(configBytesAfter)).NotTo(gomega.ContainSubstring("localhost:5001"),
+				"config should not contain registry after logout")
 
 			command.New(o, "stop", "login-registry").WithoutCheckingExitCode().Run()
 			command.New(o, "rm", "login-registry").WithoutCheckingExitCode().Run()

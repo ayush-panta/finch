@@ -15,7 +15,8 @@ import (
 	"github.com/docker/docker-credential-helpers/credentials"
 )
 
-const BufferSize = 4096
+// bufferSize is the buffer size for socket communication.
+const bufferSize = 4096
 
 // FinchHostCredentialHelper implements the credentials.Helper interface.
 type FinchHostCredentialHelper struct{}
@@ -26,7 +27,7 @@ func (h FinchHostCredentialHelper) Add(*credentials.Credentials) error {
 }
 
 // Delete is not implemented for Finch credential helper.
-func (h FinchHostCredentialHelper) Delete(serverURL string) error {
+func (h FinchHostCredentialHelper) Delete(_ string) error {
 	return fmt.Errorf("not implemented")
 }
 
@@ -64,7 +65,7 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
-	response := make([]byte, BufferSize)
+	response := make([]byte, bufferSize)
 	n, err := conn.Read(response)
 	if err != nil {
 		return "", "", credentials.NewErrCredentialsNotFound()
