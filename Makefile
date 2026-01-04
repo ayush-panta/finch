@@ -186,11 +186,11 @@ build-credential-helper:
 	# Ensure .finch/cred-helpers directory exists and copy helper
 	mkdir -p ~/.finch/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
-ifeq ($(GOOS),windows)
-	# Also copy to output directory for Windows
+	# Ensure output cred-helpers directory exists
 	mkdir -p $(OUTDIR)/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
-endif
+	# Make all credential helpers executable
+	@find $(OUTDIR)/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
 
 .PHONY: setup-credential-config
 setup-credential-config:
@@ -204,8 +204,8 @@ ifeq ($(GOOS),darwin)
 		echo "~/.finch/config.json already exists, skipping"; \
 	fi
 else ifeq ($(GOOS),windows)
-	@powershell -Command "if (-not (Test-Path '$$$$env:USERPROFILE\.finch\config.json')) { \
-		Set-Content -Path '$$$$env:USERPROFILE\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
+	@powershell -Command "if (-not (Test-Path '$$env:USERPROFILE\.finch\config.json')) { \
+		Set-Content -Path '$$env:USERPROFILE\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
 		Write-Host 'Created config.json with wincred'; \
 	} else { \
 		Write-Host 'config.json already exists, skipping'; \

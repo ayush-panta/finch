@@ -8,6 +8,7 @@ package vm
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -40,9 +41,17 @@ func setupCredentialHelper() {
 
 	// Copy credential helper to PATH if source exists
 	if _, err := os.Stat(sourcePath); err == nil {
-		sourceData, err := os.ReadFile(sourcePath)
-		if err == nil {
-			os.WriteFile(targetPath, sourceData, 0755)
+		// Use command execution for proper permissions
+		if runtime.GOOS == "windows" {
+			// Windows copy
+			sourceData, err := os.ReadFile(sourcePath)
+			if err == nil {
+				os.WriteFile(targetPath, sourceData, 0755)
+			}
+		} else {
+			// macOS/Linux copy with sudo
+			exec.Command("sudo", "cp", sourcePath, targetPath).Run()
+			exec.Command("sudo", "chmod", "+x", targetPath).Run()
 		}
 	}
 }
