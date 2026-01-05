@@ -64,7 +64,7 @@ func logoutAction(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func logoutShellComplete(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func logoutShellComplete(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	candidates, err := logout.ShellCompletion()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError

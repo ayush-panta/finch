@@ -60,7 +60,7 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 		return nil, err
 	}
 
-	cmd := exec.Command(helperPath, action)
+	cmd := exec.Command(helperPath, action) //nolint:gosec // helperPath is validated by exec.LookPath
 
 	// Set input based on action
 	if action == "store" {
@@ -92,5 +92,5 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 		return &creds, nil
 	}
 
-	return nil, nil
+	return &dockerCredential{}, nil
 }
