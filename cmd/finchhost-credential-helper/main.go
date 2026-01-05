@@ -65,7 +65,7 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
-	response := make([]byte, 0, bufferSize)
+	response := make([]byte, bufferSize)
 	n, err := conn.Read(response)
 	if err != nil {
 		return "", "", credentials.NewErrCredentialsNotFound()

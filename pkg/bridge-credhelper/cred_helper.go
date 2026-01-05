@@ -92,5 +92,5 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 		return &creds, nil
 	}
 
-	return &dockerCredential{}, nil
+	return nil, nil
 }
