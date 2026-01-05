@@ -342,10 +342,14 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 
 	var additionalEnv []string
 
-	// Need to pass .finch dir into environment
+	// Need to pass .finch dir into environment (like in nerdctl_config_applier.go)
 	homeDir, _ := os.UserHomeDir()
 	finchDir := filepath.Join(homeDir, ".finch")
-	additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
+	if runtime.GOOS == "windows" {
+		additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=$(/usr/bin/wslpath '%s')", finchDir))
+	} else {
+		additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
+	}
 
 	needsCredentials := false
 	switch cmdName {

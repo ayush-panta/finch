@@ -149,7 +149,7 @@ func GetCredentialHelperForServer(serverURL, finchPath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer fileRead.Close()
+	defer fileRead.Close() //nolint:errcheck // closing the file
 
 	bytes, err := afero.ReadAll(fileRead)
 	if err != nil {

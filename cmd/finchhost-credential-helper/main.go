@@ -54,7 +54,7 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 	if err != nil {
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	serverURL = strings.ReplaceAll(serverURL, "\n", "")
 	serverURL = strings.ReplaceAll(serverURL, "\r", "")

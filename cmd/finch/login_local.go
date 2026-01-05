@@ -31,7 +31,6 @@ import (
 
 	"github.com/containerd/log"
 
-	// "github.com/containerd/nerdctl/v2/cmd/nerdctl/helpers"
 	"github.com/containerd/nerdctl/v2/pkg/api/types"
 	"github.com/containerd/nerdctl/v2/pkg/cmd/login"
 )
