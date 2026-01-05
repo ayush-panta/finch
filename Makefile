@@ -186,8 +186,12 @@ build-credential-helper:
 	# Ensure output cred-helpers directory exists
 	mkdir -p $(OUTDIR)/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
+	# Copy to ~/.finch/cred-helpers for mounting
+	mkdir -p ~/.finch/cred-helpers
+	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
 	# Make all credential helpers executable
 	@find $(OUTDIR)/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
+	@find ~/.finch/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
 
 .PHONY: setup-credential-config
 setup-credential-config:

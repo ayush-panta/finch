@@ -30,19 +30,17 @@ const (
 	sociServiceDownloadURLFormat             = "https://raw.githubusercontent.com/awslabs/soci-snapshotter/v%s/soci-snapshotter.service"
 	credHelperInstallationScript = `# Install finchhost credential helper
 echo "DEBUG: Running credential helper installation script"
-if [ ! -f /usr/local/bin/docker-credential-finchhost ]; then
-	echo "DEBUG: Credential helper not found, checking for source file"
-	if [ -f "/tmp/finch-cred-helpers/docker-credential-finchhost" ]; then
-		echo "DEBUG: Found source file, copying to /usr/local/bin"
+if [ -f "/tmp/finch-cred-helpers/docker-credential-finchhost" ]; then
+	if [ ! -f /usr/local/bin/docker-credential-finchhost ]; then
+		echo "DEBUG: Installing credential helper from mount"
 		sudo cp "/tmp/finch-cred-helpers/docker-credential-finchhost" /usr/local/bin/
 		sudo chmod +x /usr/local/bin/docker-credential-finchhost
 		echo "DEBUG: Successfully installed credential helper"
 	else
-		echo "DEBUG: Source file not found at /tmp/finch-cred-helpers/docker-credential-finchhost"
-		ls -la "/tmp/finch-cred-helpers/" 2>/dev/null || echo "DEBUG: /tmp/finch-cred-helpers/ does not exist"
+		echo "DEBUG: Credential helper already installed"
 	fi
 else
-	echo "DEBUG: Credential helper already installed"
+	echo "DEBUG: Credential helper not found in mount, skipping installation"
 fi
 `
 	//nolint:lll // command string
