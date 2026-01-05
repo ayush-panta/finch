@@ -84,9 +84,7 @@ func setupCleanConfig() {
 	os.WriteFile(configPath, []byte(configContent), 0644)
 }
 
-// testNativeCredHelper is unused in current test suite but kept for future use.
-//
-//nolint:unused
+// testNativeCredHelper tests native credential helper functionality.
 var testNativeCredHelper = func(o *option.Option, installed bool) {
 	ginkgo.Describe("Native Credential Helper", func() {
 		ginkgo.BeforeEach(func() {
