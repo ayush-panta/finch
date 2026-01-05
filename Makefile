@@ -186,12 +186,19 @@ build-credential-helper:
 	# Ensure output cred-helpers directory exists
 	mkdir -p $(OUTDIR)/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
+ifeq ($(GOOS),windows)
+	# Copy to Windows user profile for mounting
+	@powershell -Command "New-Item -ItemType Directory -Force -Path '$(USERPROFILE)\.finch\cred-helpers' | Out-Null"
+	@powershell -Command "Copy-Item '$(OUTDIR)\bin\docker-credential-finchhost' '$(USERPROFILE)\.finch\cred-helpers\' -Force"
+	# Make output credential helpers executable (Windows doesn't need chmod)
+else
 	# Copy to ~/.finch/cred-helpers for mounting
 	mkdir -p ~/.finch/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
 	# Make all credential helpers executable
-	@find $(OUTDIR)/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
 	@find ~/.finch/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
+	@find $(OUTDIR)/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
+endif
 
 .PHONY: setup-credential-config
 setup-credential-config:
