@@ -8,7 +8,6 @@ package vm
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -20,60 +19,12 @@ import (
 	"github.com/runfinch/common-tests/option"
 )
 
-// setupCredentialHelper ensures the finchhost credential helper is available in PATH
-func setupCredentialHelper() {
-	credHelperName := "docker-credential-finchhost"
-	if runtime.GOOS == "windows" {
-		credHelperName += ".exe"
-	}
-
-	// Source path in _output/cred-helpers or _output/bin
-	sourcePaths := []string{
-		filepath.Join("..", "..", "_output", "cred-helpers", credHelperName),
-		filepath.Join("..", "..", "_output", "bin", credHelperName),
-	}
-
-	var sourcePath string
-	for _, path := range sourcePaths {
-		if _, err := os.Stat(path); err == nil {
-			sourcePath = path
-			break
-		}
-	}
-
-	if sourcePath == "" {
-		// If binary not found, skip setup - VM should handle it
-		return
-	}
-
-	// Target path in system PATH
-	var targetPath string
-	if runtime.GOOS == "windows" {
-		targetPath = filepath.Join(os.Getenv("WINDIR"), "System32", credHelperName)
-	} else {
-		targetPath = filepath.Join("/usr", "local", "bin", credHelperName)
-	}
-
-	// Copy credential helper to PATH
-	if runtime.GOOS == "windows" {
-		// Windows copy
-		sourceData, err := os.ReadFile(sourcePath)
-		if err == nil {
-			os.WriteFile(targetPath, sourceData, 0755)
-		}
-	} else {
-		// macOS/Linux copy with sudo
-		exec.Command("sudo", "cp", sourcePath, targetPath).Run()
-		exec.Command("sudo", "chmod", "+x", targetPath).Run()
-	}
-}
-
 // setupTestRegistry creates a registry for testing and returns registry name and cleanup function
 func setupTestRegistry(o *option.Option, withAuth bool) (string, func()) {
 	port := fnet.GetFreePort()
 	registryName := fmt.Sprintf("localhost:%d", port)
 	containerName := fmt.Sprintf("test-registry-%d", port)
-	
+
 	var containerID string
 	if withAuth {
 		// Setup authenticated registry
@@ -82,7 +33,7 @@ func setupTestRegistry(o *option.Option, withAuth bool) (string, func()) {
 		htpasswdFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d", filename, port))
 		os.WriteFile(htpasswdFile, []byte(htpasswd), 0644)
 		htpasswdDir := filepath.Dir(htpasswdFile)
-		
+
 		containerID = command.StdoutStr(o, "run", "-dp", fmt.Sprintf("%d:5000", port),
 			"--name", containerName,
 			"-v", fmt.Sprintf("%s:/auth", htpasswdDir),
@@ -95,17 +46,17 @@ func setupTestRegistry(o *option.Option, withAuth bool) (string, func()) {
 		containerID = command.StdoutStr(o, "run", "-dp", fmt.Sprintf("%d:5000", port),
 			"--name", containerName, "registry:2")
 	}
-	
+
 	// Wait for registry to be ready
 	for command.StdoutStr(o, "inspect", "-f", "{{.State.Running}}", containerID) != "true" {
 		time.Sleep(1 * time.Second)
 	}
 	time.Sleep(5 * time.Second)
-	
+
 	cleanup := func() {
 		command.Run(o, "rm", "-f", containerName)
 	}
-	
+
 	return registryName, cleanup
 }
 
@@ -159,7 +110,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			// Test pull from registry - this validates the push worked
 			command.New(o, "rmi", "hello-world", registryName+"/hello:test").Run()
 			command.New(o, "pull", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
-			
+
 			// Verify we can run the pulled image
 			command.New(o, "run", "--rm", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
 		})
@@ -178,14 +129,14 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
 			command.New(o, "tag", "hello-world", registryName+"/hello:test").Run()
 			command.New(o, "push", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
-			
+
 			// Verify credentials work by pulling after logout and login
 			command.New(o, "logout", registryName).Run()
 			command.New(o, "rmi", registryName+"/hello:test").Run()
-			
+
 			// This should fail without credentials
 			command.New(o, "pull", registryName+"/hello:test").WithoutCheckingExitCode().WithTimeoutInSeconds(30).Run()
-			
+
 			// Login again and verify it works - ignore credential helper auth failures
 			command.New(o, "login", registryName, "-u", "testUser", "-p", "testPassword").WithoutCheckingExitCode().Run()
 			command.New(o, "pull", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
@@ -221,19 +172,17 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			time.Sleep(10 * time.Millisecond)
 
 			gomega.Expect(socketSeen).To(gomega.BeTrue(), "credential socket should exist during operations")
-			
+
 			// Stop VM and verify socket is cleaned up
 			command.New(o, virtualMachineRootCmd, "stop").Run()
 			time.Sleep(2 * time.Second) // Give time for cleanup
-			
+
 			var socketGone bool
 			if _, err := os.Stat(socketPath); os.IsNotExist(err) {
 				socketGone = true
 			}
 			gomega.Expect(socketGone).To(gomega.BeTrue(), "credential socket should be cleaned up after VM stops")
 		})
-
-
 
 		ginkgo.It("should handle finch login and logout credential operations", func() {
 			resetVM(o)
