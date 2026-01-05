@@ -28,7 +28,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			limaOpt, err := limaCtlOpt(installed)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			
-			result := command.New(limaOpt, "shell", "finch", "which", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
+			result := command.New(limaOpt, "shell", "finch", "command", "-v", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
 			gomega.Expect(result.ExitCode()).To(gomega.Equal(0), "docker-credential-finchhost should be in VM PATH")
 		})
 
@@ -40,7 +40,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 				credHelper = "docker-credential-osxkeychain"
 			}
 
-			result := command.New(o, "run", "--rm", "alpine", "which", credHelper).WithoutCheckingExitCode().Run()
+			result := command.New(o, "run", "--rm", "alpine", "command", "-v", credHelper).WithoutCheckingExitCode().Run()
 			if result.ExitCode() != 0 {
 				ginkgo.Skip("Native credential helper " + credHelper + " not available")
 			}
