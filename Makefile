@@ -188,8 +188,8 @@ build-credential-helper:
 	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
 ifeq ($(GOOS),windows)
 	# Copy to Windows user profile for mounting
-	@powershell -Command "New-Item -ItemType Directory -Force -Path '$(USERPROFILE)\.finch\cred-helpers' | Out-Null"
-	@powershell -Command "Copy-Item '$(OUTDIR)\bin\docker-credential-finchhost' '$(USERPROFILE)\.finch\cred-helpers\' -Force"
+	@powershell -Command "New-Item -ItemType Directory -Force -Path '$(LOCALAPPDATA)\.finch\cred-helpers' | Out-Null"
+	@powershell -Command "Copy-Item '$(OUTDIR)\bin\docker-credential-finchhost' '$(LOCALAPPDATA)\.finch\cred-helpers\' -Force"
 	# Make output credential helpers executable (Windows doesn't need chmod)
 else
 	# Copy to ~/.finch/cred-helpers for mounting
@@ -212,8 +212,8 @@ ifeq ($(GOOS),darwin)
 		echo "~/.finch/config.json already exists, skipping"; \
 	fi
 else ifeq ($(GOOS),windows)
-	@powershell -Command "if (-not (Test-Path '$(USERPROFILE)\.finch\config.json')) { \
-		Set-Content -Path '$(USERPROFILE)\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
+	@powershell -Command "if (-not (Test-Path '$(LOCALAPPDATA)\.finch\config.json')) { \
+		Set-Content -Path '$(LOCALAPPDATA)\.finch\config.json' -Value '{\"credsStore\": \"wincred\"}'; \
 		Write-Host 'Created config.json with wincred'; \
 	} else { \
 		Write-Host 'config.json already exists, skipping'; \
