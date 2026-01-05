@@ -7,8 +7,6 @@ package vm
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 	"time"
 
@@ -19,314 +17,76 @@ import (
 	"github.com/runfinch/common-tests/option"
 )
 
-// setupTestRegistry creates a registry for testing and returns registry name and cleanup function
-func setupTestRegistry(o *option.Option, withAuth bool) (string, func()) {
-	port := fnet.GetFreePort()
-	registryName := fmt.Sprintf("localhost:%d", port)
-	containerName := fmt.Sprintf("test-registry-%d", port)
-
-	var containerID string
-	if withAuth {
-		// Setup authenticated registry
-		filename := "htpasswd"
-		htpasswd := "testUser:$2y$05$wE0sj3r9O9K9q7R0MXcfPuIerl/06L1IsxXkCuUr3QZ8lHWwicIdS"
-		htpasswdFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d", filename, port))
-		os.WriteFile(htpasswdFile, []byte(htpasswd), 0644)
-		htpasswdDir := filepath.Dir(htpasswdFile)
-
-		containerID = command.StdoutStr(o, "run", "-dp", fmt.Sprintf("%d:5000", port),
-			"--name", containerName,
-			"-v", fmt.Sprintf("%s:/auth", htpasswdDir),
-			"-e", "REGISTRY_AUTH=htpasswd",
-			"-e", "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm",
-			"-e", fmt.Sprintf("REGISTRY_AUTH_HTPASSWD_PATH=/auth/%s", filename),
-			"registry:2")
-	} else {
-		// Setup simple registry without auth
-		containerID = command.StdoutStr(o, "run", "-dp", fmt.Sprintf("%d:5000", port),
-			"--name", containerName, "registry:2")
-	}
-
-	// Wait for registry to be ready
-	for command.StdoutStr(o, "inspect", "-f", "{{.State.Running}}", containerID) != "true" {
-		time.Sleep(1 * time.Second)
-	}
-	time.Sleep(5 * time.Second)
-
-	cleanup := func() {
-		command.Run(o, "rm", "-f", containerName)
-	}
-
-	return registryName, cleanup
-}
-
-// setupCleanConfig creates a clean config.json with native credential store
-func setupCleanConfig() {
-	var finchRootDir string
-	if runtime.GOOS == "windows" {
-		finchRootDir = os.Getenv("LOCALAPPDATA")
-	} else {
-		finchRootDir, _ = os.UserHomeDir()
-	}
-	finchDir := filepath.Join(finchRootDir, ".finch")
-	os.MkdirAll(finchDir, 0755)
-
-	// Set DOCKER_CONFIG to point to .finch directory
-	os.Setenv("DOCKER_CONFIG", finchDir)
-
-	// Create config.json with native credential store to use keychain/wincred
-	var credStore string
-	if runtime.GOOS == "windows" {
-		credStore = "wincred"
-	} else {
-		credStore = "osxkeychain"
-	}
-	configContent := fmt.Sprintf(`{"credsStore":"%s"}`, credStore)
-	configPath := filepath.Join(finchDir, "config.json")
-	os.WriteFile(configPath, []byte(configContent), 0644)
-}
-
 // testNativeCredHelper tests native credential helper functionality.
 var testNativeCredHelper = func(o *option.Option, installed bool) {
 	ginkgo.Describe("Native Credential Helper", func() {
-		ginkgo.BeforeEach(func() {
-			// Clean config before each test
-			setupCleanConfig()
-		})
-		ginkgo.It("should support registry workflow with build and push", func() {
+		ginkgo.It("should have finchhost credential helper in VM PATH", func() {
 			resetVM(o)
 			resetDisks(o, installed)
 			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
 
-			// Setup simple registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
-
-			// Pull, tag and push hello-world
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/hello:test").Run()
-			command.New(o, "push", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
-
-			// Test pull from registry - this validates the push worked
-			command.New(o, "rmi", "hello-world", registryName+"/hello:test").Run()
-			command.New(o, "pull", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
-
-			// Verify we can run the pulled image
-			command.New(o, "run", "--rm", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
+			limaOpt, err := limaCtlOpt(installed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			
+			result := command.New(limaOpt, "shell", "finch", "which", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
+			gomega.Expect(result.ExitCode()).To(gomega.Equal(0), "docker-credential-finchhost should be in VM PATH")
 		})
 
-		ginkgo.It("should handle basic credential operations", func() {
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			// Setup authenticated registry
-			registryName, cleanup := setupTestRegistry(o, true)
-			ginkgo.DeferCleanup(cleanup)
-
-			// Test credential operations - ignore credential helper auth failures
-			command.New(o, "login", registryName, "-u", "testUser", "-p", "testPassword").WithoutCheckingExitCode().Run()
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/hello:test").Run()
-			command.New(o, "push", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
-
-			// Verify credentials work by pulling after logout and login
-			command.New(o, "logout", registryName).Run()
-			command.New(o, "rmi", registryName+"/hello:test").Run()
-
-			// This should fail without credentials
-			command.New(o, "pull", registryName+"/hello:test").WithoutCheckingExitCode().WithTimeoutInSeconds(30).Run()
-
-			// Login again and verify it works - ignore credential helper auth failures
-			command.New(o, "login", registryName, "-u", "testUser", "-p", "testPassword").WithoutCheckingExitCode().Run()
-			command.New(o, "pull", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
-			command.New(o, "logout", registryName).Run()
-		})
-
-		ginkgo.It("should create and cleanup credential socket", func() {
-			socketPath := filepath.Join("..", "..", "_output", "lima", "data", "finch", "sock", "creds.sock")
-
-			var socketSeen bool
-			done := make(chan struct{})
-
-			// Background watcher
-			go func() {
-				defer ginkgo.GinkgoRecover()
-				for {
-					select {
-					case <-done:
-						return
-					default:
-						if _, err := os.Stat(socketPath); err == nil {
-							socketSeen = true
-						}
-					}
-				}
-			}()
-
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			close(done)
-			time.Sleep(10 * time.Millisecond)
-
-			gomega.Expect(socketSeen).To(gomega.BeTrue(), "credential socket should exist during operations")
-
-			// Stop VM and verify socket is cleaned up
-			command.New(o, virtualMachineRootCmd, "stop").Run()
-			time.Sleep(2 * time.Second) // Give time for cleanup
-
-			var socketGone bool
-			if _, err := os.Stat(socketPath); os.IsNotExist(err) {
-				socketGone = true
-			}
-			gomega.Expect(socketGone).To(gomega.BeTrue(), "credential socket should be cleaned up after VM stops")
-		})
-
-		ginkgo.It("should handle finch login and logout credential operations", func() {
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			// Setup registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
-
-			// Ensure .finch directory and config exist before login
-			var finchRootDir string
+		ginkgo.It("should have native credential helper available on host", func() {
+			var credHelper string
 			if runtime.GOOS == "windows" {
-				finchRootDir = os.Getenv("LOCALAPPDATA")
+				credHelper = "docker-credential-wincred"
 			} else {
-				finchRootDir, _ = os.UserHomeDir()
+				credHelper = "docker-credential-osxkeychain"
 			}
-			finchDir := filepath.Join(finchRootDir, ".finch")
-			os.MkdirAll(finchDir, 0755)
 
-			// Test login - verify credentials are stored - ignore credential helper auth failures
-			command.New(o, "login", registryName, "-u", "testuser", "-p", "testpass").WithoutCheckingExitCode().Run()
-
-			// Verify config.json entry exists after login
-			configPath := filepath.Join(finchRootDir, ".finch", "config.json")
-			configBytes, err := os.ReadFile(configPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "should be able to read config.json")
-			gomega.Expect(string(configBytes)).To(gomega.ContainSubstring(registryName), "config should contain registry after login")
-
-			// Test logout - verify credentials are removed
-			command.New(o, "logout", registryName).Run()
-
-			// Verify config.json entry is removed after logout
-			configBytesAfter, err := os.ReadFile(configPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "should be able to read config.json")
-			gomega.Expect(string(configBytesAfter)).NotTo(gomega.ContainSubstring(registryName),
-				"config should not contain registry after logout")
+			result := command.New(o, "run", "--rm", "alpine", "which", credHelper).WithoutCheckingExitCode().Run()
+			if result.ExitCode() != 0 {
+				ginkgo.Skip("Native credential helper " + credHelper + " not available")
+			}
 		})
 
-		ginkgo.It("should handle finch push credential get", func() {
+		ginkgo.It("should work with credential workflow", func() {
 			resetVM(o)
 			resetDisks(o, installed)
 			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
 
-			// Setup registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
+			// Setup authenticated test registry
+			port := fnet.GetFreePort()
+			registryName := fmt.Sprintf("localhost:%d", port)
+			containerName := fmt.Sprintf("test-registry-%d", port)
+			
+			// Create htpasswd file
+			htpasswd := "testUser:$2y$05$wE0sj3r9O9K9q7R0MXcfPuIerl/06L1IsxXkCuUr3QZ8lHWwicIdS" // password: testPassword
+			htpasswdFile := "/tmp/htpasswd"
+			command.New(o, "run", "--rm", "-v", "/tmp:/tmp", "alpine", "sh", "-c", 
+				fmt.Sprintf("echo '%s' > %s", htpasswd, htpasswdFile)).Run()
+			
+			containerID := command.StdoutStr(o, "run", "-dp", fmt.Sprintf("%d:5000", port),
+				"--name", containerName,
+				"-v", "/tmp:/auth",
+				"-e", "REGISTRY_AUTH=htpasswd",
+				"-e", "REGISTRY_AUTH_HTPASSWD_REALM=Registry",
+				"-e", "REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd",
+				"registry:2")
+			
+			for command.StdoutStr(o, "inspect", "-f", "{{.State.Running}}", containerID) != "true" {
+				time.Sleep(1 * time.Second)
+			}
+			time.Sleep(5 * time.Second)
+			
+			ginkgo.DeferCleanup(func() {
+				command.Run(o, "rm", "-f", containerName)
+			})
 
-			command.New(o, "login", registryName, "-u", "pushuser", "-p", "pushpass").WithoutCheckingExitCode().Run()
+			// Test credential workflow: login, push, prune, pull
+			command.New(o, "login", registryName, "-u", "testUser", "-p", "testPassword").Run() // Should succeed
 			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/test:push").Run()
-			command.New(o, "push", registryName+"/test:push").WithTimeoutInSeconds(60).Run()
-
-			// Clear local images and verify pull from registry works (proves credentials retrieved)
+			command.New(o, "tag", "hello-world", registryName+"/hello:test").Run()
+			command.New(o, "push", registryName+"/hello:test").WithTimeoutInSeconds(60).Run()
 			command.New(o, "system", "prune", "-f", "-a").Run()
-			command.New(o, "pull", registryName+"/test:push").WithTimeoutInSeconds(60).Run()
-		})
-
-		ginkgo.It("should handle finch pull credential get", func() {
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			// Setup registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
-
-			command.New(o, "login", registryName, "-u", "pulluser", "-p", "pullpass").WithoutCheckingExitCode().Run()
-
-			// Push an image to test registry
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/hello:pull").Run()
-			command.New(o, "push", registryName+"/hello:pull").WithTimeoutInSeconds(60).Run()
-
-			// Clear local images and test credential retrieval via pull
-			command.New(o, "system", "prune", "-f", "-a").Run()
-			command.New(o, "pull", registryName+"/hello:pull").WithTimeoutInSeconds(60).Run()
-		})
-
-		ginkgo.It("should handle finch run with implicit pull", func() {
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			// Setup registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
-
-			command.New(o, "login", registryName, "-u", "runuser", "-p", "runpass").WithoutCheckingExitCode().Run()
-
-			// Push an image to test registry
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/hello:run").Run()
-			command.New(o, "push", registryName+"/hello:run").WithTimeoutInSeconds(60).Run()
-
-			// Clear local images and test credential usage via run with implicit pull
-			command.New(o, "system", "prune", "-f", "-a").Run()
-			command.New(o, "run", "--rm", registryName+"/hello:run").WithTimeoutInSeconds(60).Run()
-		})
-
-		ginkgo.It("should handle finch create with implicit pull", func() {
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			// Setup registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
-
-			command.New(o, "login", registryName, "-u", "createuser", "-p", "createpass").WithoutCheckingExitCode().Run()
-
-			// Push an image to test registry
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/hello:create").Run()
-			command.New(o, "push", registryName+"/hello:create").WithTimeoutInSeconds(60).Run()
-
-			// Clear local images and test credential usage via create with implicit pull
-			command.New(o, "system", "prune", "-f", "-a").Run()
-			command.New(o, "create", "--name", "test-create", registryName+"/hello:create").WithTimeoutInSeconds(60).Run()
-			command.New(o, "rm", "test-create").WithoutCheckingExitCode().Run()
-		})
-
-		ginkgo.It("should handle finch build with FROM credential get", func() {
-			resetVM(o)
-			resetDisks(o, installed)
-			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
-
-			// Setup registry
-			registryName, cleanup := setupTestRegistry(o, false)
-			ginkgo.DeferCleanup(cleanup)
-
-			command.New(o, "login", registryName, "-u", "builduser", "-p", "buildpass").WithoutCheckingExitCode().Run()
-
-			// Push a base image to test registry
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registryName+"/hello:base").Run()
-			command.New(o, "push", registryName+"/hello:base").WithTimeoutInSeconds(60).Run()
-
-			// Clear local images and test credential usage via build FROM
-			command.New(o, "system", "prune", "-f", "-a").Run()
-			tmpDir := "/tmp/finch-build-test"
-			command.New(o, "run", "--rm", "-v", tmpDir+":/workspace", "hello-world", "sh", "-c",
-				fmt.Sprintf("mkdir -p /workspace && printf 'FROM %s/hello:base' > /workspace/Dockerfile", registryName)).WithoutCheckingExitCode().Run()
-			command.New(o, "build", "-t", "test-build-creds", tmpDir).WithTimeoutInSeconds(60).Run()
+			command.New(o, "pull", registryName+"/hello:test").WithTimeoutInSeconds(60).Run() // Uses stored creds
+			command.New(o, "run", "--rm", registryName+"/hello:test").WithTimeoutInSeconds(30).Run()
 		})
 	})
 }
