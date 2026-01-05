@@ -191,6 +191,10 @@ build-credential-helper:
 	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
 	# Make all credential helpers executable
 	@find $(OUTDIR)/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
+ifeq ($(GOOS),windows)
+	# On Windows, also ensure the binary is executable in WSL
+	@chmod +x ~/.finch/cred-helpers/docker-credential-finchhost 2>/dev/null || true
+endif
 
 .PHONY: setup-credential-config
 setup-credential-config:
