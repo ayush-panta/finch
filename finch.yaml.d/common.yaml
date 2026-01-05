@@ -3,6 +3,11 @@ images:
     arch: "<finch_image_arch>"
     digest: "<finch_image_digest>"
 
+mounts:
+  - location: "<finch_cred_helpers_dir>"
+    mountPoint: "/tmp/finch-cred-helpers"
+    writable: false
+
 containerd:
   system: true
   user: false

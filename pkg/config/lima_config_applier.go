@@ -28,6 +28,23 @@ const (
 	sociFileNameFormat                       = "soci-snapshotter-%s-linux-%s.tar.gz"
 	sociDownloadURLFormat                    = "https://github.com/awslabs/soci-snapshotter/releases/download/v%s/%s"
 	sociServiceDownloadURLFormat             = "https://raw.githubusercontent.com/awslabs/soci-snapshotter/v%s/soci-snapshotter.service"
+	credHelperInstallationScript = `# Install finchhost credential helper
+echo "DEBUG: Running credential helper installation script"
+if [ ! -f /usr/local/bin/docker-credential-finchhost ]; then
+	echo "DEBUG: Credential helper not found, checking for source file"
+	if [ -f "/tmp/finch-cred-helpers/docker-credential-finchhost" ]; then
+		echo "DEBUG: Found source file, copying to /usr/local/bin"
+		sudo cp "/tmp/finch-cred-helpers/docker-credential-finchhost" /usr/local/bin/
+		sudo chmod +x /usr/local/bin/docker-credential-finchhost
+		echo "DEBUG: Successfully installed credential helper"
+	else
+		echo "DEBUG: Source file not found at /tmp/finch-cred-helpers/docker-credential-finchhost"
+		ls -la "/tmp/finch-cred-helpers/" 2>/dev/null || echo "DEBUG: /tmp/finch-cred-helpers/ does not exist"
+	fi
+else
+	echo "DEBUG: Credential helper already installed"
+fi
+`
 	//nolint:lll // command string
 	sociInstallationScriptFormat = `%s
 if [ ! -f /usr/local/bin/soci ]; then
@@ -188,6 +205,8 @@ func (lca *limaConfigApplier) ConfigureOverrideLimaYaml() error {
 		return fmt.Errorf("failed to configure default snapshotter: %w", err)
 	}
 
+	lca.provisionCredentialHelper(&limaCfg)
+
 	if *lca.cfg.VMType == "wsl2" {
 		ensureWslDiskFormatScript(&limaCfg)
 	}
@@ -258,6 +277,14 @@ func (lca *limaConfigApplier) provisionSociSnapshotter(limaCfg *limayaml.LimaYAM
 	limaCfg.Provision = append(limaCfg.Provision, limayaml.Provision{
 		Mode:   "system",
 		Script: sociInstallationScript,
+	})
+}
+
+func (lca *limaConfigApplier) provisionCredentialHelper(limaCfg *limayaml.LimaYAML) {
+	fmt.Println("DEBUG: Adding credential helper provisioning script")
+	limaCfg.Provision = append(limaCfg.Provision, limayaml.Provision{
+		Mode:   "system",
+		Script: credHelperInstallationScript,
 	})
 }
 

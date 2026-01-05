@@ -91,12 +91,7 @@ func addLineToBashrc(fs afero.Fs, profileFilePath string, profStr string, cmd st
 func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir string) error {
 	cmdArr := []string{
 		`export DOCKER_CONFIG="$FINCH_DIR/vm-config"`,
-		// Add cred-helpers to PATH for credential helper discovery
-		`export PATH="$FINCH_DIR/cred-helpers:$PATH"`,
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
-		// Install finchhost credential helper to system location
-		`sudo cp "$FINCH_DIR"/cred-helpers/docker-credential-finchhost /usr/local/bin/ 2>/dev/null || true`,
-		`sudo chmod +x /usr/local/bin/docker-credential-finchhost 2>/dev/null || true`,
 		// Create VM config directory and file
 		`mkdir -p "$FINCH_DIR/vm-config"`,
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,

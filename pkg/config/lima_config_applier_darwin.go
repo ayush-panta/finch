@@ -77,6 +77,14 @@ func (lca *limaConfigApplier) configureMemory(limaCfg *limayaml.LimaYAML) *limay
 
 func (lca *limaConfigApplier) configureMounts(limaCfg *limayaml.LimaYAML) *limayaml.LimaYAML {
 	limaCfg.Mounts = []limayaml.Mount{}
+
+	// Add credential helpers mount
+	limaCfg.Mounts = append(limaCfg.Mounts, limayaml.Mount{
+		Location:   "/tmp/finch-creds",
+		MountPoint: pointer.String("/tmp/finch-cred-helpers"),
+		Writable:   pointer.Bool(false),
+	})
+
 	for _, ad := range lca.cfg.AdditionalDirectories {
 		limaCfg.Mounts = append(limaCfg.Mounts, limayaml.Mount{
 			Location: *ad.Path, Writable: pointer.Bool(true),
