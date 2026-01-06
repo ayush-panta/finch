@@ -8,7 +8,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/xorcare/pointer"
@@ -78,15 +77,6 @@ func (lca *limaConfigApplier) configureMemory(limaCfg *limayaml.LimaYAML) *limay
 
 func (lca *limaConfigApplier) configureMounts(limaCfg *limayaml.LimaYAML) *limayaml.LimaYAML {
 	limaCfg.Mounts = []limayaml.Mount{}
-
-	// Add credential helpers mount
-	credHelpersPath := filepath.Join(filepath.Dir(lca.finchConfigPath), "cred-helpers")
-	limaCfg.Mounts = append(limaCfg.Mounts, limayaml.Mount{
-		Location:   credHelpersPath,
-		MountPoint: pointer.String("/tmp/finch-cred-helpers"),
-		Writable:   pointer.Bool(false),
-	})
-
 	for _, ad := range lca.cfg.AdditionalDirectories {
 		limaCfg.Mounts = append(limaCfg.Mounts, limayaml.Mount{
 			Location: *ad.Path, Writable: pointer.Bool(true),

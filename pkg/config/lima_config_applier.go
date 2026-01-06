@@ -28,26 +28,7 @@ const (
 	sociFileNameFormat                       = "soci-snapshotter-%s-linux-%s.tar.gz"
 	sociDownloadURLFormat                    = "https://github.com/awslabs/soci-snapshotter/releases/download/v%s/%s"
 	sociServiceDownloadURLFormat             = "https://raw.githubusercontent.com/awslabs/soci-snapshotter/v%s/soci-snapshotter.service"
-	credHelperInstallationScript = `# Install finchhost credential helper
-echo "DEBUG: Checking for credential helper at /tmp/finch-cred-helpers/docker-credential-finchhost"
-ls -la /tmp/finch-cred-helpers/ || echo "DEBUG: Mount directory not found"
-if [ -f "/tmp/finch-cred-helpers/docker-credential-finchhost" ]; then
-	echo "DEBUG: Found credential helper in mount"
-	if [ ! -f /usr/local/bin/docker-credential-finchhost ]; then
-		echo "DEBUG: Installing credential helper to /usr/local/bin/"
-		sudo cp "/tmp/finch-cred-helpers/docker-credential-finchhost" /usr/local/bin/
-		sudo chmod +x /usr/local/bin/docker-credential-finchhost
-		echo "DEBUG: Installation complete"
-	else
-		echo "DEBUG: Credential helper already installed"
-	fi
-else
-	echo "DEBUG: Credential helper not found in mount directory"
-fi
-echo "DEBUG: Checking final installation:"
-ls -la /usr/local/bin/docker-credential-finchhost || echo "DEBUG: Binary not found in /usr/local/bin/"
-echo "DEBUG: PATH contents: $PATH"
-`
+
 	//nolint:lll // command string
 	sociInstallationScriptFormat = `%s
 if [ ! -f /usr/local/bin/soci ]; then
@@ -208,8 +189,6 @@ func (lca *limaConfigApplier) ConfigureOverrideLimaYaml() error {
 		return fmt.Errorf("failed to configure default snapshotter: %w", err)
 	}
 
-	lca.provisionCredentialHelper(&limaCfg)
-
 	if *lca.cfg.VMType == "wsl2" {
 		ensureWslDiskFormatScript(&limaCfg)
 	}
@@ -280,13 +259,6 @@ func (lca *limaConfigApplier) provisionSociSnapshotter(limaCfg *limayaml.LimaYAM
 	limaCfg.Provision = append(limaCfg.Provision, limayaml.Provision{
 		Mode:   "system",
 		Script: sociInstallationScript,
-	})
-}
-
-func (lca *limaConfigApplier) provisionCredentialHelper(limaCfg *limayaml.LimaYAML) {
-	limaCfg.Provision = append(limaCfg.Provision, limayaml.Provision{
-		Mode:   "system",
-		Script: credHelperInstallationScript,
 	})
 }
 

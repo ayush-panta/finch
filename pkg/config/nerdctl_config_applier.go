@@ -97,11 +97,18 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
 	}
 
+	// Add credential helper to PATH
+	if *fc.VMType == "wsl2" {
+		cmdArr = append(cmdArr, `export PATH="/mnt/c/finchhost:$PATH"`)
+	} else {
+		cmdArr = append(cmdArr, `export PATH="/tmp/finchhost:$PATH"`)
+	}
+
 	// Use the first credhelper in the list in finch.yaml
 	// If user removed all for some reason, will do nothing
 	// Only create config.json if it doesn't already exist
 	if len(fc.CredsHelpers) > 0 {
-		cmdArr = append(cmdArr, fmt.Sprintf(`[ ! -f "$FINCH_DIR"/config.json ] && ` +
+		cmdArr = append(cmdArr, fmt.Sprintf(`[ ! -f "$FINCH_DIR"/config.json ] && `+
 			`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, fc.CredsHelpers[0]))
 	}
 

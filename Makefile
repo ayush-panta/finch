@@ -187,17 +187,14 @@ build-credential-helper:
 	mkdir -p $(OUTDIR)/cred-helpers
 	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
 ifeq ($(GOOS),windows)
-	# Copy to Windows user profile for mounting
-	@powershell -Command "New-Item -ItemType Directory -Force -Path '$(LOCALAPPDATA)\.finch\cred-helpers' | Out-Null"
-	@powershell -Command "Copy-Item '$(OUTDIR)\bin\docker-credential-finchhost' '$(LOCALAPPDATA)\.finch\cred-helpers\' -Force"
-	# Make output credential helpers executable (Windows doesn't need chmod)
+	# Copy to WSL2's automatic C: mount location
+	mkdir -p C:/finchhost
+	cp $(OUTDIR)/bin/docker-credential-finchhost C:/finchhost/
 else
-	# Copy to ~/.finch/cred-helpers for mounting
-	mkdir -p ~/.finch/cred-helpers
-	cp $(OUTDIR)/bin/docker-credential-finchhost ~/.finch/cred-helpers/
-	# Make all credential helpers executable
-	@find ~/.finch/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
-	@find $(OUTDIR)/cred-helpers -name "docker-credential-*" -type f -exec chmod +x {} \;
+	# Copy to /tmp which is mounted in macOS VM
+	mkdir -p /tmp/finchhost
+	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/finchhost/
+	chmod +x /tmp/finchhost/docker-credential-finchhost
 endif
 
 .PHONY: setup-credential-config
