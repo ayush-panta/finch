@@ -152,9 +152,31 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			resetDisks(o, installed)
 			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
 
-			// Setup test registry
-			regInfo := setupTestRegistry(o)
-			fmt.Printf("🔧 Registry setup: %s (user: %s)\n", regInfo.URL, regInfo.Username)
+			// Setup test registry - EXACTLY like testFinchConfigFile
+			filename := "htpasswd"
+			registryImage := "public.ecr.aws/docker/library/registry:2"
+			registryContainer := "auth-registry"
+			//nolint:gosec // This password is only used for testing purpose.
+			htpasswd := "testUser:$2y$05$wE0sj3r9O9K9q7R0MXcfPuIerl/06L1IsxXkCuUr3QZ8lHWwicIdS"
+			htpasswdDir := filepath.Dir(ffs.CreateTempFile(filename, htpasswd))
+			ginkgo.DeferCleanup(os.RemoveAll, htpasswdDir)
+			port := fnet.GetFreePort()
+			containerID := command.StdoutStr(o, "run",
+				"-dp", fmt.Sprintf("%d:5000", port),
+				"--name", registryContainer,
+				"-v", fmt.Sprintf("%s:/auth", htpasswdDir),
+				"-e", "REGISTRY_AUTH=htpasswd",
+				"-e", "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm",
+				"-e", fmt.Sprintf("REGISTRY_AUTH_HTPASSWD_PATH=/auth/%s", filename),
+				registryImage)
+			ginkgo.DeferCleanup(command.Run, o, "rmi", "-f", registryImage)
+			ginkgo.DeferCleanup(command.Run, o, "rm", "-f", registryContainer)
+			for command.StdoutStr(o, "inspect", "-f", "{{.State.Running}}", containerID) != "true" {
+				time.Sleep(1 * time.Second)
+			}
+			time.Sleep(10 * time.Second)
+			registry := fmt.Sprintf(`localhost:%d`, port)
+			fmt.Printf("🔧 Registry setup complete: %s (user: testUser)\n", registry)
 
 			// Verify credential helper is available in VM
 			limaOpt, err := limaCtlOpt(installed)
@@ -162,24 +184,29 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			helperCheck := command.New(limaOpt, "shell", "finch", "command", "-v", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
 			fmt.Printf("🔍 Credential helper in VM: exit=%d\n", helperCheck.ExitCode())
 
-			// Test credential workflow: login using stdin for security
-			loginCmd := command.New(o, "login", regInfo.URL, "-u", regInfo.Username, "--password-stdin")
-			loginCmd.WithStdin(strings.NewReader(regInfo.Password))
-			loginResult := loginCmd.WithoutCheckingExitCode().Run()
-			fmt.Printf("🔐 Login result: exit=%d, stdout=%s, stderr=%s\n", loginResult.ExitCode(), string(loginResult.Out.Contents()), string(loginResult.Err.Contents()))
-			gomega.Expect(loginResult.ExitCode()).To(gomega.Equal(0))
-
-			// Verify config.json has correct structure after login
+			// Check config.json BEFORE login
 			dockerConfig := os.Getenv("DOCKER_CONFIG")
 			configPath := filepath.Join(dockerConfig, "config.json")
+			configContentBefore, readErr := os.ReadFile(configPath)
+			if readErr != nil {
+				fmt.Printf("📄 config.json BEFORE login: file not found or error: %v\n", readErr)
+			} else {
+				fmt.Printf("📄 config.json BEFORE login:\n%s\n", string(configContentBefore))
+			}
+
+			// Test credential workflow: login using same method as testFinchConfigFile
+			command.Run(o, "login", registry, "-u", "testUser", "-p", "testPassword")
+			fmt.Printf("🔐 Login completed\n")
+
+			// Verify config.json has correct structure after login
 			configContent, readErr := os.ReadFile(configPath)
 			gomega.Expect(readErr).NotTo(gomega.HaveOccurred())
-			fmt.Printf("📄 config.json after login:\n%s\n", string(configContent))
+			fmt.Printf("📄 config.json AFTER login:\n%s\n", string(configContent))
 
 			// Test native credential helper directly on HOST
 			var nativeCredHelper string
 			if runtime.GOOS == "windows" {
-				nativeCredHelper = "docker-credential-wincred"
+				nativeCredHelper = "docker-credential-wincred.exe"
 			} else {
 				nativeCredHelper = "docker-credential-osxkeychain"
 			}
@@ -189,12 +216,12 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			fmt.Printf("💻 Native credential helper path: %s (error: %v)\n", nativeCredPath, pathErr)
 			
 			fmt.Printf("💻 Testing native credential helper on HOST: %s\n", nativeCredHelper)
-			hostCredCmd := exec.Command("sh", "-c", fmt.Sprintf("echo '%s' | %s get", regInfo.URL, nativeCredHelper))
+			hostCredCmd := exec.Command("sh", "-c", fmt.Sprintf("echo '%s' | %s get", registry, nativeCredHelper))
 			hostCredOutput, hostCredErr := hostCredCmd.CombinedOutput()
 			fmt.Printf("💻 Host native cred helper: error=%v, output=%s\n", hostCredErr, string(hostCredOutput))
 
 			// Verify config contains registry entry and credential store
-			gomega.Expect(string(configContent)).To(gomega.ContainSubstring(regInfo.URL))
+			gomega.Expect(string(configContent)).To(gomega.ContainSubstring(registry))
 			if runtime.GOOS == "windows" {
 				gomega.Expect(string(configContent)).To(gomega.ContainSubstring("wincred"))
 			} else {
@@ -203,20 +230,20 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Test push/pull workflow
 			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", regInfo.URL+"/hello:test").Run()
+			command.New(o, "tag", "hello-world", registry+"/hello:test").Run()
 
 			// Debug push with verbose output
-			fmt.Printf("🚀 Attempting push to %s/hello:test\n", regInfo.URL)
-			pushResult := command.New(o, "push", regInfo.URL+"/hello:test").WithTimeoutInSeconds(60).WithoutCheckingExitCode().Run()
+			fmt.Printf("🚀 Attempting push to %s/hello:test\n", registry)
+			pushResult := command.New(o, "push", registry+"/hello:test").WithTimeoutInSeconds(60).WithoutCheckingExitCode().Run()
 			fmt.Printf("📤 Push result: exit=%d, stdout=%s, stderr=%s\n", pushResult.ExitCode(), string(pushResult.Out.Contents()), string(pushResult.Err.Contents()))
 			gomega.Expect(pushResult.ExitCode()).To(gomega.Equal(0))
 
 			command.New(o, "system", "prune", "-f", "-a").Run()
-			command.New(o, "pull", regInfo.URL+"/hello:test").WithTimeoutInSeconds(60).Run()
-			command.New(o, "run", "--rm", regInfo.URL+"/hello:test").WithTimeoutInSeconds(30).Run()
+			command.New(o, "pull", registry+"/hello:test").WithTimeoutInSeconds(60).Run()
+			command.New(o, "run", "--rm", registry+"/hello:test").WithTimeoutInSeconds(30).Run()
 
 			// Test logout
-			command.Run(o, "logout", regInfo.URL)
+			command.Run(o, "logout", registry)
 
 			// Verify config.json no longer contains auth for this registry
 			configContentAfterLogout, readErr := os.ReadFile(configPath)
@@ -224,7 +251,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			fmt.Printf("📄 config.json after logout:\n%s\n", string(configContentAfterLogout))
 
 			// Should still have credsStore but no auth entry for the registry
-			gomega.Expect(string(configContentAfterLogout)).NotTo(gomega.ContainSubstring(regInfo.URL))
+			gomega.Expect(string(configContentAfterLogout)).NotTo(gomega.ContainSubstring(registry))
 		})
 	})
 }
