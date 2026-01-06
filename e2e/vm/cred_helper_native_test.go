@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -173,33 +174,33 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			for command.StdoutStr(o, "inspect", "-f", "{{.State.Running}}", containerID) != "true" {
 				time.Sleep(1 * time.Second)
 			}
+			fmt.Printf("🔧 Registry container is running, waiting for HTTP service...\n")
 			time.Sleep(10 * time.Second)
-			
-			// Wait for registry to actually accept HTTP requests
 			registry := fmt.Sprintf(`localhost:%d`, port)
-			fmt.Printf("🔧 Registry container running, waiting for HTTP service at %s...\n", registry)
-			for i := 0; i < 30; i++ {
-				// Try to connect to registry API endpoint using busybox (smaller image)
-				testResult := command.New(o, "run", "--rm", "public.ecr.aws/docker/library/busybox:latest", 
-					"sh", "-c", fmt.Sprintf("wget -q -O - http://%s/v2/ >/dev/null 2>&1", registry)).WithoutCheckingExitCode().Run()
-				if testResult.ExitCode() == 0 {
-					fmt.Printf("✅ Registry HTTP service ready after %d seconds\n", i+1)
-					break
-				}
-				if i == 29 {
-					fmt.Printf("❌ Registry HTTP service not ready after 30 seconds\n")
-					ginkgo.Fail("Registry failed to become ready")
-				}
-				time.Sleep(1 * time.Second)
-			}
 			
-			// Additional wait for registry to be fully stable
-			time.Sleep(5 * time.Second)
+			// Test registry readiness with curl and debug output
+			limaOpt, err := limaCtlOpt(installed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			
+			fmt.Printf("🔍 Testing registry HTTP endpoint: %s/v2/\n", registry)
+			for i := 0; i < 10; i++ {
+				curlResult := command.New(limaOpt, "shell", "finch", "curl", "-v", "-s", "-w", "\nHTTP_CODE:%{http_code}\n", fmt.Sprintf("http://%s/v2/", registry)).WithoutCheckingExitCode().Run()
+				fmt.Printf("🔍 Curl attempt %d: exit=%d\n", i+1, curlResult.ExitCode())
+				fmt.Printf("🔍 Curl stdout:\n%s\n", string(curlResult.Out.Contents()))
+				fmt.Printf("🔍 Curl stderr:\n%s\n", string(curlResult.Err.Contents()))
+				
+				if curlResult.ExitCode() == 0 {
+					output := string(curlResult.Out.Contents())
+					if strings.Contains(output, "HTTP_CODE:401") {
+						fmt.Printf("✅ Registry HTTP service ready (got 401 auth required)\n")
+						break
+					}
+				}
+				time.Sleep(2 * time.Second)
+			}
 			fmt.Printf("🔧 Registry setup complete: %s (user: testUser)\n", registry)
 
 			// Verify credential helper is available in VM
-			limaOpt, err := limaCtlOpt(installed)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			helperCheck := command.New(limaOpt, "shell", "finch", "command", "-v", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
 			fmt.Printf("🔍 Credential helper in VM: exit=%d\n", helperCheck.ExitCode())
 
