@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -189,7 +188,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 				}
 				if i == 29 {
 					fmt.Printf("❌ Registry HTTP service not ready after 30 seconds\n")
-					gomega.Fail("Registry failed to become ready")
+					ginkgo.Fail("Registry failed to become ready")
 				}
 				time.Sleep(1 * time.Second)
 			}
