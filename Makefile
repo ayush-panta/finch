@@ -209,8 +209,8 @@ ifeq ($(GOOS),darwin)
 		echo "~/.finch/config.json already exists, skipping"; \
 	fi
 else ifeq ($(GOOS),windows)
-	@if not exist "%LOCALAPPDATA%\.finch" mkdir "%LOCALAPPDATA%\.finch"
-	@if not exist "%LOCALAPPDATA%\.finch\config.json" echo {"credsStore": "wincred"} > "%LOCALAPPDATA%\.finch\config.json"
+	cmd /c "if not exist "%LOCALAPPDATA%\.finch" mkdir "%LOCALAPPDATA%\.finch""
+	cmd /c "if not exist "%LOCALAPPDATA%\.finch\config.json" echo {\"credsStore\": \"wincred\"} > "%LOCALAPPDATA%\.finch\config.json""
 endif
 
 .PHONY: release
