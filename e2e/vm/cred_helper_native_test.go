@@ -175,7 +175,27 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 				time.Sleep(1 * time.Second)
 			}
 			time.Sleep(10 * time.Second)
+			
+			// Wait for registry to actually accept HTTP requests
 			registry := fmt.Sprintf(`localhost:%d`, port)
+			fmt.Printf("🔧 Registry container running, waiting for HTTP service at %s...\n", registry)
+			for i := 0; i < 30; i++ {
+				// Try to connect to registry API endpoint using busybox (smaller image)
+				testResult := command.New(o, "run", "--rm", "public.ecr.aws/docker/library/busybox:latest", 
+					"sh", "-c", fmt.Sprintf("wget -q -O - http://%s/v2/ >/dev/null 2>&1", registry)).WithoutCheckingExitCode().Run()
+				if testResult.ExitCode() == 0 {
+					fmt.Printf("✅ Registry HTTP service ready after %d seconds\n", i+1)
+					break
+				}
+				if i == 29 {
+					fmt.Printf("❌ Registry HTTP service not ready after 30 seconds\n")
+					gomega.Fail("Registry failed to become ready")
+				}
+				time.Sleep(1 * time.Second)
+			}
+			
+			// Additional wait for registry to be fully stable
+			time.Sleep(5 * time.Second)
 			fmt.Printf("🔧 Registry setup complete: %s (user: testUser)\n", registry)
 
 			// Verify credential helper is available in VM
