@@ -151,6 +151,55 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 				nativeCredHelper = "docker-credential-wincred.exe"
 			} else {
 				nativeCredHelper = "docker-credential-osxkeychain"
+				
+				// Setup keychain for macOS CI environment
+				if runtime.GOOS == "darwin" && os.Getenv("CI") == "true" {
+					fmt.Printf("🔧 Setting up login keychain for macOS CI\n")
+					
+					// Create proper login keychain path
+					homeDir, err := os.UserHomeDir()
+					gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+					keychainsDir := filepath.Join(homeDir, "Library", "Keychains")
+					loginKeychainPath := filepath.Join(keychainsDir, "login.keychain-db")
+					keychainPassword := "test-password"
+					
+					// Create Keychains directory if it doesn't exist
+					err = os.MkdirAll(keychainsDir, 0755)
+					gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+					
+					// Create login keychain
+					createCmd := exec.Command("security", "create-keychain", "-p", keychainPassword, loginKeychainPath)
+					createOutput, createErr := createCmd.CombinedOutput()
+					fmt.Printf("🔧 Create login keychain result: error=%v, output=%s\n", createErr, string(createOutput))
+					
+					// Unlock keychain
+					unlockCmd := exec.Command("security", "unlock-keychain", "-p", keychainPassword, loginKeychainPath)
+					unlockOutput, unlockErr := unlockCmd.CombinedOutput()
+					fmt.Printf("🔧 Unlock login keychain result: error=%v, output=%s\n", unlockErr, string(unlockOutput))
+					
+					// Set keychain search list (login keychain first, then system)
+					listCmd := exec.Command("security", "list-keychains", "-s", loginKeychainPath, "/Library/Keychains/System.keychain")
+					listOutput, listErr := listCmd.CombinedOutput()
+					fmt.Printf("🔧 Set keychain list result: error=%v, output=%s\n", listErr, string(listOutput))
+					
+					// Set as default keychain
+					defaultCmd := exec.Command("security", "default-keychain", "-s", loginKeychainPath)
+					defaultOutput, defaultErr := defaultCmd.CombinedOutput()
+					fmt.Printf("🔧 Set default keychain result: error=%v, output=%s\n", defaultErr, string(defaultOutput))
+					
+					// Verify keychain setup
+					verifyCmd := exec.Command("security", "list-keychains")
+					verifyOutput, verifyErr := verifyCmd.CombinedOutput()
+					fmt.Printf("🔧 Final keychain list: error=%v, output=%s\n", verifyErr, string(verifyOutput))
+					
+					// Cleanup function
+					defer func() {
+						fmt.Printf("🧹 Cleaning up login keychain\n")
+						deleteCmd := exec.Command("security", "delete-keychain", loginKeychainPath)
+						deleteOutput, deleteErr := deleteCmd.CombinedOutput()
+						fmt.Printf("🧹 Delete keychain result: error=%v, output=%s\n", deleteErr, string(deleteOutput))
+					}()
+				}
 			}
 			
 			fmt.Printf("🧪 TESTING NATIVE CREDENTIAL HELPER ACCESS IN CI\n")
