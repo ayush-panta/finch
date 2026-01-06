@@ -90,16 +90,13 @@ func addLineToBashrc(fs afero.Fs, profileFilePath string, profStr string, cmd st
 
 func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir string) error {
 	cmdArr := []string{
+		`export PATH="/usr/bin:/usr/local/bin:$PATH"`,
 		`export DOCKER_CONFIG="$FINCH_DIR/vm-config"`,
 		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
 		// Create VM config directory and file
 		`mkdir -p "$FINCH_DIR/vm-config"`,
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
 	}
-
-	// Debug credential helper installation (handled by common.yaml provisioning)
-	cmdArr = append(cmdArr, `echo "[DEBUG] Checking if finchhost was installed by provisioning:" && ls -lah /usr/bin/docker-credential-finchhost 2>/dev/null || echo "[DEBUG] docker-credential-finchhost not found in /usr/bin"`)
-	cmdArr = append(cmdArr, `echo "[DEBUG] which docker-credential-finchhost:" && which docker-credential-finchhost 2>/dev/null || echo "[DEBUG] docker-credential-finchhost not found in PATH"`)
 
 	// Use the first credhelper in the list in finch.yaml
 	// If user removed all for some reason, will do nothing
