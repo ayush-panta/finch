@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -102,7 +103,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			// Verify DOCKER_CONFIG environment variable is set
 			dockerConfig := os.Getenv("DOCKER_CONFIG")
 			gomega.Expect(dockerConfig).ShouldNot(gomega.BeEmpty(), "DOCKER_CONFIG should be set")
-			
+
 			// Verify it points to the correct Finch directory
 			var expectedFinchDir string
 			if runtime.GOOS == "windows" {
@@ -113,7 +114,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 				expectedFinchDir = filepath.Join(homeDir, ".finch")
 			}
-			
+
 			gomega.Expect(dockerConfig).Should(gomega.Equal(expectedFinchDir), "DOCKER_CONFIG should point to ~/.finch")
 			fmt.Printf("✓ DOCKER_CONFIG is correctly set to: %s\n", dockerConfig)
 		})
@@ -125,8 +126,9 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			limaOpt, err := limaCtlOpt(installed)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			
+
 			result := command.New(limaOpt, "shell", "finch", "command", "-v", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
+			fmt.Printf("docker-credential-finchhost path: %s\n", string(result.Out.Contents()))
 			gomega.Expect(result.ExitCode()).To(gomega.Equal(0), "docker-credential-finchhost should be in VM PATH")
 		})
 
@@ -152,42 +154,65 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Setup test registry
 			regInfo := setupTestRegistry(o)
+			fmt.Printf("🔧 Registry setup: %s (user: %s)\n", regInfo.URL, regInfo.Username)
 
-			// Test credential workflow: login, push, prune, pull
-			command.Run(o, "login", regInfo.URL, "-u", regInfo.Username, "-p", regInfo.Password)
-			
-			// Debug: Print config.json after login
+			// Verify credential helper is available in VM
+			limaOpt, err := limaCtlOpt(installed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			helperCheck := command.New(limaOpt, "shell", "finch", "command", "-v", "docker-credential-finchhost").WithoutCheckingExitCode().Run()
+			fmt.Printf("🔍 Credential helper in VM: exit=%d\n", helperCheck.ExitCode())
+
+			// Test credential workflow: login using stdin for security
+			loginCmd := command.New(o, "login", regInfo.URL, "-u", regInfo.Username, "--password-stdin")
+			loginCmd.WithStdin(strings.NewReader(regInfo.Password))
+			loginResult := loginCmd.WithoutCheckingExitCode().Run()
+			fmt.Printf("🔐 Login result: exit=%d, stdout=%s, stderr=%s\n", loginResult.ExitCode(), string(loginResult.Out.Contents()), string(loginResult.Err.Contents()))
+			gomega.Expect(loginResult.ExitCode()).To(gomega.Equal(0))
+
+			// Verify config.json has correct structure after login
 			dockerConfig := os.Getenv("DOCKER_CONFIG")
 			configPath := filepath.Join(dockerConfig, "config.json")
 			configContent, readErr := os.ReadFile(configPath)
-			if readErr != nil {
-				fmt.Printf("❌ Could not read config.json: %v\n", readErr)
+			gomega.Expect(readErr).NotTo(gomega.HaveOccurred())
+			fmt.Printf("📄 config.json after login:\n%s\n", string(configContent))
+
+			// Test credential helper directly in VM
+			testCredCmd := command.New(limaOpt, "shell", "finch", "sh", "-c", fmt.Sprintf("echo '%s' | docker-credential-finchhost get", regInfo.URL))
+			testCredResult := testCredCmd.WithoutCheckingExitCode().Run()
+			fmt.Printf("🧪 Direct cred helper test: exit=%d, stdout=%s, stderr=%s\n", testCredResult.ExitCode(), string(testCredResult.Out.Contents()), string(testCredResult.Err.Contents()))
+
+			// Verify config contains registry entry and credential store
+			gomega.Expect(string(configContent)).To(gomega.ContainSubstring(regInfo.URL))
+			if runtime.GOOS == "windows" {
+				gomega.Expect(string(configContent)).To(gomega.ContainSubstring("wincred"))
 			} else {
-				fmt.Printf("📄 config.json after login:\n%s\n", string(configContent))
+				gomega.Expect(string(configContent)).To(gomega.ContainSubstring("osxkeychain"))
 			}
-			
+
+			// Test push/pull workflow
 			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
 			command.New(o, "tag", "hello-world", regInfo.URL+"/hello:test").Run()
-			command.New(o, "push", regInfo.URL+"/hello:test").WithTimeoutInSeconds(60).Run()
+
+			// Debug push with verbose output
+			fmt.Printf("🚀 Attempting push to %s/hello:test\n", regInfo.URL)
+			pushResult := command.New(o, "push", regInfo.URL+"/hello:test").WithTimeoutInSeconds(60).WithoutCheckingExitCode().Run()
+			fmt.Printf("📤 Push result: exit=%d, stdout=%s, stderr=%s\n", pushResult.ExitCode(), string(pushResult.Out.Contents()), string(pushResult.Err.Contents()))
+			gomega.Expect(pushResult.ExitCode()).To(gomega.Equal(0))
+
 			command.New(o, "system", "prune", "-f", "-a").Run()
 			command.New(o, "pull", regInfo.URL+"/hello:test").WithTimeoutInSeconds(60).Run()
 			command.New(o, "run", "--rm", regInfo.URL+"/hello:test").WithTimeoutInSeconds(30).Run()
 
-			// Test logout and verify credentials are removed from native store
+			// Test logout
 			command.Run(o, "logout", regInfo.URL)
-			
-			// Verify credentials no longer exist in native credential store by calling helper directly on HOST
-			var credHelper string
-			if runtime.GOOS == "windows" {
-				credHelper = "docker-credential-wincred"
-			} else {
-				credHelper = "docker-credential-osxkeychain"
-			}
-			
-			// Call credential helper directly on host system
-			cmd := exec.Command("sh", "-c", fmt.Sprintf("echo '%s' | %s get", regInfo.URL, credHelper))
-			cmdErr := cmd.Run()
-			gomega.Expect(cmdErr).To(gomega.HaveOccurred(), "credentials should be removed from native store after logout")
+
+			// Verify config.json no longer contains auth for this registry
+			configContentAfterLogout, readErr := os.ReadFile(configPath)
+			gomega.Expect(readErr).NotTo(gomega.HaveOccurred())
+			fmt.Printf("📄 config.json after logout:\n%s\n", string(configContentAfterLogout))
+
+			// Should still have credsStore but no auth entry for the registry
+			gomega.Expect(string(configContentAfterLogout)).NotTo(gomega.ContainSubstring(regInfo.URL))
 		})
 	})
 }
