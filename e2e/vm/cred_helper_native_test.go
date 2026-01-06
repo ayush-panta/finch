@@ -176,10 +176,22 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			gomega.Expect(readErr).NotTo(gomega.HaveOccurred())
 			fmt.Printf("📄 config.json after login:\n%s\n", string(configContent))
 
-			// Test credential helper directly in VM
-			testCredCmd := command.New(limaOpt, "shell", "finch", "sh", "-c", fmt.Sprintf("echo '%s' | docker-credential-finchhost get", regInfo.URL))
-			testCredResult := testCredCmd.WithoutCheckingExitCode().Run()
-			fmt.Printf("🧪 Direct cred helper test: exit=%d, stdout=%s, stderr=%s\n", testCredResult.ExitCode(), string(testCredResult.Out.Contents()), string(testCredResult.Err.Contents()))
+			// Test native credential helper directly on HOST
+			var nativeCredHelper string
+			if runtime.GOOS == "windows" {
+				nativeCredHelper = "docker-credential-wincred"
+			} else {
+				nativeCredHelper = "docker-credential-osxkeychain"
+			}
+			
+			// Check native credential helper path
+			nativeCredPath, pathErr := exec.LookPath(nativeCredHelper)
+			fmt.Printf("💻 Native credential helper path: %s (error: %v)\n", nativeCredPath, pathErr)
+			
+			fmt.Printf("💻 Testing native credential helper on HOST: %s\n", nativeCredHelper)
+			hostCredCmd := exec.Command("sh", "-c", fmt.Sprintf("echo '%s' | %s get", regInfo.URL, nativeCredHelper))
+			hostCredOutput, hostCredErr := hostCredCmd.CombinedOutput()
+			fmt.Printf("💻 Host native cred helper: error=%v, output=%s\n", hostCredErr, string(hostCredOutput))
 
 			// Verify config contains registry entry and credential store
 			gomega.Expect(string(configContent)).To(gomega.ContainSubstring(regInfo.URL))
