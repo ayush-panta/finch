@@ -97,12 +97,17 @@ func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir 
 		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
 	}
 
-	// Add credential helper to PATH
+	// Copy credential helper to /usr/local/bin and debug
 	if *fc.VMType == "wsl2" {
-		cmdArr = append(cmdArr, `export PATH="/mnt/c/finchhost:$PATH"`)
+		cmdArr = append(cmdArr, `echo "[DEBUG] WSL2 finchhost directory contents:" && ls -lah /mnt/c/finchhost/ 2>/dev/null || echo "[DEBUG] /mnt/c/finchhost/ not found"`)
+		cmdArr = append(cmdArr, `if [ -f /mnt/c/finchhost/docker-credential-finchhost ]; then sudo cp /mnt/c/finchhost/docker-credential-finchhost /usr/local/bin/ && sudo chmod +x /usr/local/bin/docker-credential-finchhost && echo "[DEBUG] Copied finchhost from WSL2 mount"; else echo "[DEBUG] finchhost not found in WSL2 mount"; fi`)
 	} else {
-		cmdArr = append(cmdArr, `export PATH="/tmp/finchhost:$PATH"`)
+		cmdArr = append(cmdArr, `echo "[DEBUG] macOS finchhost directory contents:" && ls -lah /tmp/finchhost/ 2>/dev/null || echo "[DEBUG] /tmp/finchhost/ not found"`)
+		cmdArr = append(cmdArr, `if [ -f /tmp/finchhost/docker-credential-finchhost ]; then sudo cp /tmp/finchhost/docker-credential-finchhost /usr/local/bin/ && sudo chmod +x /usr/local/bin/docker-credential-finchhost && echo "[DEBUG] Copied finchhost from macOS mount"; else echo "[DEBUG] finchhost not found in macOS mount"; fi`)
 	}
+	// Debug final installation
+	cmdArr = append(cmdArr, `echo "[DEBUG] /usr/local/bin contents:" && ls -lah /usr/local/bin/docker-credential-* 2>/dev/null || echo "[DEBUG] No credential helpers in /usr/local/bin"`)
+	cmdArr = append(cmdArr, `echo "[DEBUG] which docker-credential-finchhost:" && which docker-credential-finchhost 2>/dev/null || echo "[DEBUG] docker-credential-finchhost not found in PATH"`)
 
 	// Use the first credhelper in the list in finch.yaml
 	// If user removed all for some reason, will do nothing
