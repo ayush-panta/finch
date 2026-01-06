@@ -72,6 +72,23 @@ provision:
       sudo cp ~/.ssh/authorized_keys /root/.ssh/
       sudo chown $USER /mnt/lima-finch
 
+      # Install finchhost credential helper to PATH with debug
+      echo "[DEBUG] Installing finchhost credential helper..."
+      if [ -f /tmp/lima/finchhost/docker-credential-finchhost ]; then
+        echo "[DEBUG] Found finchhost in macOS mount, installing..."
+        sudo cp /tmp/lima/finchhost/docker-credential-finchhost /usr/bin/docker-credential-finchhost
+        sudo chmod +x /usr/bin/docker-credential-finchhost
+        echo "[DEBUG] Installed finchhost from macOS mount"
+      elif [ -f /mnt/c/finchhost/docker-credential-finchhost ]; then
+        echo "[DEBUG] Found finchhost in WSL2 mount, installing..."
+        sudo cp /mnt/c/finchhost/docker-credential-finchhost /usr/bin/docker-credential-finchhost
+        sudo chmod +x /usr/bin/docker-credential-finchhost
+        echo "[DEBUG] Installed finchhost from WSL2 mount"
+      else
+        echo "[DEBUG] finchhost not found in either mount location"
+      fi
+      echo "[DEBUG] Final check:" && ls -lah /usr/bin/docker-credential-finchhost 2>/dev/null || echo "[DEBUG] Installation failed"
+
       # This block of configuration facilitates the startup of rootless containers created prior to this change within the rootful vm configuration by mounting /mnt/lima-finch to both rootless and rootful dataroots.   
 
       # https://github.com/containerd/containerd/blob/main/docs/ops.md#base-configuration
