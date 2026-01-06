@@ -99,17 +99,29 @@ func loginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
 }
 
 func loginAction(cmd *cobra.Command, args []string) error {
+	log.L.Error("[LOGIN DEBUG] Starting login action")
 	options, err := loginOptions(cmd)
 	if err != nil {
+		log.L.WithError(err).Error("[LOGIN DEBUG] Failed to parse login options")
 		return err
 	}
 
 	if len(args) == 1 {
 		// Normalize server address by removing default HTTPS port
 		serverAddr := args[0]
+		log.L.Errorf("[LOGIN DEBUG] Original server address: %s", serverAddr)
 		serverAddr = strings.TrimSuffix(serverAddr, ":443")
+		log.L.Errorf("[LOGIN DEBUG] Normalized server address: %s", serverAddr)
 		options.ServerAddress = serverAddr
 	}
 
-	return login.Login(cmd.Context(), options, cmd.OutOrStdout())
+	log.L.Errorf("[LOGIN DEBUG] Login options - ServerAddress: %s, Username: %s", options.ServerAddress, options.Username)
+	log.L.Error("[LOGIN DEBUG] Calling nerdctl login.Login()")
+	err = login.Login(cmd.Context(), options, cmd.OutOrStdout())
+	if err != nil {
+		log.L.WithError(err).Error("[LOGIN DEBUG] nerdctl login.Login() failed")
+	} else {
+		log.L.Error("[LOGIN DEBUG] nerdctl login.Login() succeeded")
+	}
+	return err
 }

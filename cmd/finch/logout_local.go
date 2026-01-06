@@ -45,17 +45,26 @@ func newLogoutLocalCommand(_ flog.Logger) *cobra.Command {
 }
 
 func logoutAction(cmd *cobra.Command, args []string) error {
+	log.L.Error("[LOGOUT DEBUG] Starting logout action")
 	logoutServer := ""
 	if len(args) > 0 {
 		logoutServer = args[0]
+		log.L.Errorf("[LOGOUT DEBUG] Logout server: %s", logoutServer)
+	} else {
+		log.L.Error("[LOGOUT DEBUG] No server specified, logging out from default")
 	}
 
+	log.L.Error("[LOGOUT DEBUG] Calling nerdctl logout.Logout()")
 	errGroup, err := logout.Logout(cmd.Context(), logoutServer)
 	if err != nil {
 		log.L.WithError(err).Errorf("Failed to erase credentials for: %s", logoutServer)
+		log.L.WithError(err).Error("[LOGOUT DEBUG] nerdctl logout.Logout() failed")
+	} else {
+		log.L.Error("[LOGOUT DEBUG] nerdctl logout.Logout() succeeded")
 	}
 	if errGroup != nil {
 		log.L.Error("None of the following entries could be found")
+		log.L.Error("[LOGOUT DEBUG] Error group found, listing entries")
 		for _, v := range errGroup {
 			log.L.Errorf("%s", v)
 		}

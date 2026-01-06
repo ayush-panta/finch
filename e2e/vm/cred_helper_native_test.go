@@ -216,7 +216,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Test credential workflow: login using same method as testFinchConfigFile
 			fmt.Printf("🔐 Attempting login to %s with user testUser...\n", registry)
-			loginResult := command.New(o, "login", registry, "-u", "testUser", "-p", "testPassword").WithoutCheckingExitCode().Run()
+			fmt.Printf("🔍 Login debug: Running 'finch login %s -u testUser -p testPassword'\n", registry)
+			loginResult := command.New(o, "login", registry, "-u", "testUser", "-p", "testPassword").WithTimeoutInSeconds(30).WithoutCheckingExitCode().Run()
 			fmt.Printf("🔐 Login result: exit=%d, stdout=%s, stderr=%s\n", loginResult.ExitCode(), string(loginResult.Out.Contents()), string(loginResult.Err.Contents()))
 			gomega.Expect(loginResult.ExitCode()).To(gomega.Equal(0), "Login should succeed")
 			fmt.Printf("🔐 Login completed\n")
@@ -284,6 +285,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Test logout
 			fmt.Printf("🚪 Logging out from registry...\n")
+			fmt.Printf("🔍 Logout debug: Running 'finch logout %s'\n", registry)
 			logoutResult := command.New(o, "logout", registry).WithoutCheckingExitCode().Run()
 			fmt.Printf("🚪 Logout result: exit=%d, stdout=%s, stderr=%s\n", logoutResult.ExitCode(), string(logoutResult.Out.Contents()), string(logoutResult.Err.Contents()))
 			gomega.Expect(logoutResult.ExitCode()).To(gomega.Equal(0), "Logout should succeed")
