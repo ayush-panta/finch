@@ -191,10 +191,10 @@ ifeq ($(GOOS),windows)
 	mkdir -p C:/finchhost
 	cp $(OUTDIR)/bin/docker-credential-finchhost C:/finchhost/
 else
-	# Copy to /tmp which is mounted in macOS VM
-	mkdir -p /tmp/finchhost
-	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/finchhost/
-	chmod +x /tmp/finchhost/docker-credential-finchhost
+	# Copy to /tmp/lima which is mounted in macOS VM
+	mkdir -p /tmp/lima/finchhost
+	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/lima/finchhost/
+	chmod +x /tmp/lima/finchhost/docker-credential-finchhost
 endif
 
 .PHONY: setup-credential-config
