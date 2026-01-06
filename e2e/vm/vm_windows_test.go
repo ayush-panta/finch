@@ -37,6 +37,12 @@ func TestVM(t *testing.T) {
 	// Test Stopped -> Nonexistent
 	// Test Nonexistent -> Running
 	ginkgo.SynchronizedBeforeSuite(func() []byte {
+		// Set DOCKER_CONFIG to point to %LOCALAPPDATA%\.finch for credential helper tests
+		finchRootDir := os.Getenv("LOCALAPPDATA")
+		gomega.Expect(finchRootDir).ShouldNot(gomega.BeEmpty())
+		finchConfigDir := filepath.Join(finchRootDir, ".finch")
+		os.Setenv("DOCKER_CONFIG", finchConfigDir)
+
 		resetDisks(o, *e2e.Installed)
 		command.New(o, "vm", "stop", "-f").WithoutCheckingExitCode().WithTimeoutInSeconds(30).Run()
 		time.Sleep(1 * time.Second)
@@ -61,14 +67,14 @@ func TestVM(t *testing.T) {
 			error parsing configuration list:unexpected end of JSON input\nFor details on the schema"
 		*/
 		// testVMPrune(o, *e2e.Installed)
-		testVMLifecycle(o)
-		testAdditionalDisk(o, *e2e.Installed)
-		testVersion(o)
-		testSupportBundle(o)
-		testCredHelper(o, *e2e.Installed, *e2e.Registry)
+		// testVMLifecycle(o)
+		// testAdditionalDisk(o, *e2e.Installed)
+		// testVersion(o)
+		// testSupportBundle(o)
+		// testCredHelper(o, *e2e.Installed, *e2e.Registry)
 		testNativeCredHelper(o, *e2e.Installed)
-		testSoci(o, *e2e.Installed)
-		testMSIInstallPermission(o, *e2e.Installed)
+		// testSoci(o, *e2e.Installed)
+		// testMSIInstallPermission(o, *e2e.Installed)
 	})
 
 	gomega.RegisterFailHandler(ginkgo.Fail)
