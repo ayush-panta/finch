@@ -209,14 +209,14 @@ ifeq ($(GOOS),darwin)
 		echo "~/.finch/config.json already exists, skipping"; \
 	fi
 else ifeq ($(GOOS),windows)
-	@powershell -Command "$$finchDir = Join-Path $$env:LOCALAPPDATA '.finch'; \
-		if (-not (Test-Path $$finchDir)) { New-Item -ItemType Directory -Path $$finchDir -Force | Out-Null }; \
-		$$configPath = Join-Path $$finchDir 'config.json'; \
-		if (-not (Test-Path $$configPath)) { \
-			Set-Content -Path $$configPath -Value '{\"credsStore\": \"wincred\"}'; \
-			Write-Host 'Created config.json with wincred'; \
+	@powershell -Command "if (-not (Test-Path (Join-Path $$env:LOCALAPPDATA '.finch'))) { \
+			New-Item -ItemType Directory -Path (Join-Path $$env:LOCALAPPDATA '.finch') -Force | Out-Null \
+		}; \
+		if (-not (Test-Path (Join-Path $$env:LOCALAPPDATA '.finch\config.json'))) { \
+			Set-Content -Path (Join-Path $$env:LOCALAPPDATA '.finch\config.json') -Value '{\"credsStore\": \"wincred\"}'; \
+			Write-Host 'Created config.json with wincred' \
 		} else { \
-			Write-Host 'config.json already exists, skipping'; \
+			Write-Host 'config.json already exists, skipping' \
 		}"
 endif
 
