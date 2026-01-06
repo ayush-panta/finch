@@ -215,7 +215,10 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			}
 
 			// Test credential workflow: login using same method as testFinchConfigFile
-			command.Run(o, "login", registry, "-u", "testUser", "-p", "testPassword")
+			fmt.Printf("🔐 Attempting login to %s with user testUser...\n", registry)
+			loginResult := command.New(o, "login", registry, "-u", "testUser", "-p", "testPassword").WithoutCheckingExitCode().Run()
+			fmt.Printf("🔐 Login result: exit=%d, stdout=%s, stderr=%s\n", loginResult.ExitCode(), string(loginResult.Out.Contents()), string(loginResult.Err.Contents()))
+			gomega.Expect(loginResult.ExitCode()).To(gomega.Equal(0), "Login should succeed")
 			fmt.Printf("🔐 Login completed\n")
 
 			// Verify config.json has correct structure after login
@@ -249,8 +252,15 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			}
 
 			// Test push/pull workflow
-			command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).Run()
-			command.New(o, "tag", "hello-world", registry+"/hello:test").Run()
+			fmt.Printf("📦 Pulling hello-world image...\n")
+			pullResult := command.New(o, "pull", "hello-world").WithTimeoutInSeconds(60).WithoutCheckingExitCode().Run()
+			fmt.Printf("📦 Pull result: exit=%d, stdout=%s, stderr=%s\n", pullResult.ExitCode(), string(pullResult.Out.Contents()), string(pullResult.Err.Contents()))
+			gomega.Expect(pullResult.ExitCode()).To(gomega.Equal(0), "Pull should succeed")
+			
+			fmt.Printf("🏷️ Tagging image as %s/hello:test...\n", registry)
+			tagResult := command.New(o, "tag", "hello-world", registry+"/hello:test").WithoutCheckingExitCode().Run()
+			fmt.Printf("🏷️ Tag result: exit=%d, stdout=%s, stderr=%s\n", tagResult.ExitCode(), string(tagResult.Out.Contents()), string(tagResult.Err.Contents()))
+			gomega.Expect(tagResult.ExitCode()).To(gomega.Equal(0), "Tag should succeed")
 
 			// Debug push with verbose output
 			fmt.Printf("🚀 Attempting push to %s/hello:test\n", registry)
@@ -258,12 +268,25 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			fmt.Printf("📤 Push result: exit=%d, stdout=%s, stderr=%s\n", pushResult.ExitCode(), string(pushResult.Out.Contents()), string(pushResult.Err.Contents()))
 			gomega.Expect(pushResult.ExitCode()).To(gomega.Equal(0))
 
-			command.New(o, "system", "prune", "-f", "-a").Run()
-			command.New(o, "pull", registry+"/hello:test").WithTimeoutInSeconds(60).Run()
-			command.New(o, "run", "--rm", registry+"/hello:test").WithTimeoutInSeconds(30).Run()
+			fmt.Printf("🧽 Cleaning up images...\n")
+			pruneResult := command.New(o, "system", "prune", "-f", "-a").WithoutCheckingExitCode().Run()
+			fmt.Printf("🧽 Prune result: exit=%d, stdout=%s, stderr=%s\n", pruneResult.ExitCode(), string(pruneResult.Out.Contents()), string(pruneResult.Err.Contents()))
+
+			fmt.Printf("📦 Pulling test image from registry...\n")
+			pullTestResult := command.New(o, "pull", registry+"/hello:test").WithTimeoutInSeconds(60).WithoutCheckingExitCode().Run()
+			fmt.Printf("📦 Pull test result: exit=%d, stdout=%s, stderr=%s\n", pullTestResult.ExitCode(), string(pullTestResult.Out.Contents()), string(pullTestResult.Err.Contents()))
+			gomega.Expect(pullTestResult.ExitCode()).To(gomega.Equal(0), "Pull from registry should succeed")
+			
+			fmt.Printf("🏃 Running test container...\n")
+			runResult := command.New(o, "run", "--rm", registry+"/hello:test").WithTimeoutInSeconds(30).WithoutCheckingExitCode().Run()
+			fmt.Printf("🏃 Run result: exit=%d, stdout=%s, stderr=%s\n", runResult.ExitCode(), string(runResult.Out.Contents()), string(runResult.Err.Contents()))
+			gomega.Expect(runResult.ExitCode()).To(gomega.Equal(0), "Run should succeed")
 
 			// Test logout
-			command.Run(o, "logout", registry)
+			fmt.Printf("🚪 Logging out from registry...\n")
+			logoutResult := command.New(o, "logout", registry).WithoutCheckingExitCode().Run()
+			fmt.Printf("🚪 Logout result: exit=%d, stdout=%s, stderr=%s\n", logoutResult.ExitCode(), string(logoutResult.Out.Contents()), string(logoutResult.Err.Contents()))
+			gomega.Expect(logoutResult.ExitCode()).To(gomega.Equal(0), "Logout should succeed")
 
 			// Verify config.json no longer contains auth for this registry
 			configContentAfterLogout, readErr := os.ReadFile(configPath)
