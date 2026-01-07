@@ -51,16 +51,29 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 	hostOS := os.Getenv("FINCH_HOST_OS")
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_HOST_OS: %s\n", hostOS)
 	if hostOS == "windows" {
-		// Windows: Search for socket in common mount locations
-		for _, basePath := range []string{"/mnt/c", "/c"} {
-			pattern := filepath.Join(basePath, "*/lima/data/finch/sock/creds.sock")
+		// Windows: Search for socket in all possible mount locations
+		// Check both /mnt/ and direct mount styles for all drives
+		searchPaths := []string{
+			"/mnt/*/lima/data/finch/sock/creds.sock",       // Any drive standard mount
+			"/*/lima/data/finch/sock/creds.sock",           // Any drive alternative mount  
+			"/mnt/*/*/lima/data/finch/sock/creds.sock",     // Nested in any drive
+			"/*/*/lima/data/finch/sock/creds.sock",         // Nested alternative mount
+			"/mnt/*/*/*/lima/data/finch/sock/creds.sock",   // Deep nested paths
+			"/*/*/*/lima/data/finch/sock/creds.sock",       // Deep nested alternative
+		}
+		
+		for _, pattern := range searchPaths {
+			fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Searching pattern: %s\n", pattern)
 			if matches, _ := filepath.Glob(pattern); len(matches) > 0 {
 				credentialSocketPath = matches[0]
+				fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Found socket at: %s\n", credentialSocketPath)
 				break
 			}
 		}
+		
 		if credentialSocketPath == "" {
 			credentialSocketPath = "/mnt/c/Program Files/Finch/lima/data/finch/sock/creds.sock" // fallback
+			fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] No socket found, using fallback: %s\n", credentialSocketPath)
 		}
 	} else {
 		// macOS: Use port-forwarded path
