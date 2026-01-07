@@ -1,7 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build darwin || windows
 //go:build darwin
 
 package vm
@@ -11,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -71,7 +69,7 @@ func setupTestRegistry(o *option.Option) *RegistryInfo {
 
 // setupCredentialEnvironment creates a fresh credential store environment for testing
 func setupCredentialEnvironment() func() {
-	if runtime.GOOS == "darwin" && os.Getenv("CI") == "true" {
+	if os.Getenv("CI") == "true" {
 		// Create fresh keychain for macOS CI
 		homeDir, err := os.UserHomeDir()
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
@@ -97,34 +95,20 @@ func setupCredentialEnvironment() func() {
 			exec.Command("security", "delete-keychain", loginKeychainPath).Run()
 		}
 	}
-	// Windows credential store doesn't need special setup
 	return func() {}
 }
 
 // setupFreshFinchConfig creates/replaces ~/.finch/config.json with credential helper configured
 func setupFreshFinchConfig() {
-	var finchRootDir string
-	var err error
-	if runtime.GOOS == "windows" {
-		finchRootDir = os.Getenv("LOCALAPPDATA")
-	} else {
-		finchRootDir, err = os.UserHomeDir()
-		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	}
+	homeDir, err := os.UserHomeDir()
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-	finchDir := filepath.Join(finchRootDir, ".finch")
+	finchDir := filepath.Join(homeDir, ".finch")
 	err = os.MkdirAll(finchDir, 0755)
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 	configPath := filepath.Join(finchDir, "config.json")
-	var credStore string
-	if runtime.GOOS == "windows" {
-		credStore = "wincred"
-	} else {
-		credStore = "osxkeychain"
-	}
-
-	configContent := fmt.Sprintf(`{"credsStore": "%s"}`, credStore)
+	configContent := `{"credsStore": "osxkeychain"}`
 	err = os.WriteFile(configPath, []byte(configContent), 0644)
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 }
@@ -230,11 +214,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			// Determine finchRootPath based on installation type
 			var finchRootPath string
 			if installed {
-				if runtime.GOOS == "windows" {
-					finchRootPath = "C:\\Program Files\\Finch"
-				} else {
-					finchRootPath = "/Applications/Finch"
-				}
+				finchRootPath = "/Applications/Finch"
 			} else {
 				// Development build
 				wd, _ := os.Getwd()
@@ -313,15 +293,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 					case <-vmMonitorDone:
 						return
 					default:
-						// Check VM socket paths
-						var vmSocketCheck *command.Command
-						if runtime.GOOS == "windows" {
-							// Check Windows mount paths
-							vmSocketCheck = command.New(limaOpt, "shell", "finch", "sh", "-c", "for path in '/mnt/c/Program Files/Finch' '/c/actions-runner/_work/finch/finch/_output'; do if [ -S \"$path/lima/data/finch/sock/creds.sock\" ]; then echo \"FOUND:$path/lima/data/finch/sock/creds.sock\"; exit 0; fi; done; exit 1")
-						} else {
-							// Check macOS port-forwarded path
-							vmSocketCheck = command.New(limaOpt, "shell", "finch", "sh", "-c", "if [ -S '/run/finch-user-sockets/creds.sock' ]; then echo 'FOUND:/run/finch-user-sockets/creds.sock'; exit 0; else exit 1; fi")
-						}
+						// Check macOS port-forwarded path
+						vmSocketCheck := command.New(limaOpt, "shell", "finch", "sh", "-c", "if [ -S '/run/finch-user-sockets/creds.sock' ]; then echo 'FOUND:/run/finch-user-sockets/creds.sock'; exit 0; else exit 1; fi")
 
 						result := vmSocketCheck.WithoutCheckingExitCode().Run()
 						if result.ExitCode() == 0 {
@@ -365,13 +338,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 				// Double-check VM socket paths now
 				fmt.Printf("🔌 Double-checking VM socket paths after operation...\n")
-				if runtime.GOOS == "windows" {
-					socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Checking Windows socket paths:\"; for path in '/mnt/c/Program Files/Finch' '/c/actions-runner/_work/finch/finch/_output'; do SOCKET_PATH=\"$path/lima/data/finch/sock/creds.sock\"; echo \"Checking: $SOCKET_PATH\"; if [ -S \"$SOCKET_PATH\" ]; then echo \"Socket found: $SOCKET_PATH\"; else echo \"Socket not found: $SOCKET_PATH\"; fi; done").WithTimeoutInSeconds(5).WithoutCheckingExitCode().Run()
-					fmt.Printf("🔌 Windows VM Check:\n%s\n", string(socketTestResult.Out.Contents()))
-				} else {
-					socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Checking macOS socket path:\"; SOCKET_PATH='/run/finch-user-sockets/creds.sock'; echo \"Checking: $SOCKET_PATH\"; if [ -S \"$SOCKET_PATH\" ]; then echo \"Socket found: $SOCKET_PATH\"; else echo \"Socket not found: $SOCKET_PATH\"; fi").WithTimeoutInSeconds(5).WithoutCheckingExitCode().Run()
-					fmt.Printf("🔌 macOS VM Check:\n%s\n", string(socketTestResult.Out.Contents()))
-				}
+				socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Checking macOS socket path:\"; SOCKET_PATH='/run/finch-user-sockets/creds.sock'; echo \"Checking: $SOCKET_PATH\"; if [ -S \"$SOCKET_PATH\" ]; then echo \"Socket found: $SOCKET_PATH\"; else echo \"Socket not found: $SOCKET_PATH\"; fi").WithTimeoutInSeconds(5).WithoutCheckingExitCode().Run()
+				fmt.Printf("🔌 macOS VM Check:\n%s\n", string(socketTestResult.Out.Contents()))
 			}
 
 		})
