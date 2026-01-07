@@ -324,9 +324,9 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			defer func() { vmMonitorDone <- true }()
 
 			// Step 3: Trigger credential operation that should create socket
-			fmt.Printf("🔌 Step 3: Triggering credential operation (login)\n")
-			loginResult := command.New(o, "login", "fake-registry.example.com", "-u", "testuser", "-p", "testpass").WithTimeoutInSeconds(30).WithoutCheckingExitCode().Run()
-			fmt.Printf("🔌 Login result: exit=%d, stderr=%s\n", loginResult.ExitCode(), string(loginResult.Err.Contents()))
+			fmt.Printf("🔌 Step 3: Triggering credential operation (pull hello-world)\n")
+			pullResult := command.New(o, "pull", "hello-world").WithTimeoutInSeconds(30).WithoutCheckingExitCode().Run()
+			fmt.Printf("🔌 Pull result: exit=%d, stderr=%s\n", pullResult.ExitCode(), string(pullResult.Err.Contents()))
 
 			// Give monitor a moment to detect socket
 			time.Sleep(500 * time.Millisecond)
