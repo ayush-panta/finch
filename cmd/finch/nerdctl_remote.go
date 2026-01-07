@@ -347,8 +347,10 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	finchDir := filepath.Join(homeDir, ".finch")
 	if runtime.GOOS == "windows" {
 		additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=$(/usr/bin/wslpath '%s')", finchDir))
+		additionalEnv = append(additionalEnv, "FINCH_HOST_OS=windows")
 	} else {
 		additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
+		additionalEnv = append(additionalEnv, "FINCH_HOST_OS=darwin")
 	}
 
 	needsCredentials := false

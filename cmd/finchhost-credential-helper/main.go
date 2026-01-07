@@ -48,9 +48,22 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_DIR: %s\n", finchDir)
 
 	var credentialSocketPath string
-	if strings.Contains(os.Getenv("PATH"), "/mnt/c") || os.Getenv("WSL_DISTRO_NAME") != "" {
-		credentialSocketPath = filepath.Join(finchDir, "lima", "data", "finch", "sock", "creds.sock")
+	hostOS := os.Getenv("FINCH_HOST_OS")
+	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_HOST_OS: %s\n", hostOS)
+	if hostOS == "windows" {
+		// Windows: Search for socket in common mount locations
+		for _, basePath := range []string{"/mnt/c", "/c"} {
+			pattern := filepath.Join(basePath, "*/lima/data/finch/sock/creds.sock")
+			if matches, _ := filepath.Glob(pattern); len(matches) > 0 {
+				credentialSocketPath = matches[0]
+				break
+			}
+		}
+		if credentialSocketPath == "" {
+			credentialSocketPath = "/mnt/c/Program Files/Finch/lima/data/finch/sock/creds.sock" // fallback
+		}
 	} else {
+		// macOS: Use port-forwarded path
 		credentialSocketPath = "/run/finch-user-sockets/creds.sock"
 	}
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Socket path: %s\n", credentialSocketPath)

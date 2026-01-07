@@ -274,8 +274,14 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			
 			// Host monitor
 			socketFoundOnHost := false
-			hostMonitorDone := make(chan bool)
+			hostMonitorDone := make(chan bool, 1)
 			go func() {
+				defer func() {
+					select {
+					case hostMonitorDone <- true:
+					default:
+					}
+				}()
 				for {
 					select {
 					case <-hostMonitorDone:
@@ -290,12 +296,17 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 					}
 				}
 			}()
-			defer func() { hostMonitorDone <- true }()
 			
 			// VM monitor - check platform-specific socket paths
 			socketFoundInVM := false
-			vmMonitorDone := make(chan bool)
+			vmMonitorDone := make(chan bool, 1)
 			go func() {
+				defer func() {
+					select {
+					case vmMonitorDone <- true:
+					default:
+					}
+				}()
 				for {
 					select {
 					case <-vmMonitorDone:
@@ -321,7 +332,6 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 					}
 				}
 			}()
-			defer func() { vmMonitorDone <- true }()
 
 			// Step 3: Trigger credential operation that should create socket
 			fmt.Printf("🔌 Step 3: Triggering credential operation (pull hello-world)\n")
