@@ -224,8 +224,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Test socket paths
 			if runtime.GOOS == "windows" {
-				// Windows should use FINCH_DIR path
-				socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing Windows socket path\"; FINCH_DIR_EXPANDED=$(eval echo $FINCH_DIR); echo \"FINCH_DIR_EXPANDED=$FINCH_DIR_EXPANDED\"; SOCKET_PATH=\"$FINCH_DIR_EXPANDED/lima/data/finch/sock/creds.sock\"; echo \"Expected socket: $SOCKET_PATH\"; ls -la \"$SOCKET_PATH\" 2>/dev/null || echo \"Socket not found: $SOCKET_PATH\"; ls -la \"$(dirname \"$SOCKET_PATH\")/\" 2>/dev/null || echo \"Socket dir not found\"").WithoutCheckingExitCode().Run()
+				// Windows should use FINCH_DIR path - check if FINCH_DIR is set and expanded properly
+				socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing Windows socket path\"; echo \"FINCH_DIR=$FINCH_DIR\"; if [ -n \"$FINCH_DIR\" ]; then FINCH_DIR_EXPANDED=$(eval echo $FINCH_DIR); echo \"FINCH_DIR_EXPANDED=$FINCH_DIR_EXPANDED\"; SOCKET_PATH=\"$FINCH_DIR_EXPANDED/lima/data/finch/sock/creds.sock\"; echo \"Expected socket: $SOCKET_PATH\"; ls -la \"$SOCKET_PATH\" 2>/dev/null || echo \"Socket not found: $SOCKET_PATH\"; ls -la \"$(dirname \"$SOCKET_PATH\")/\" 2>/dev/null || echo \"Socket dir not found\"; else echo \"FINCH_DIR not set - checking fallback paths\"; for path in '/c/actions-runner/_work/finch/finch/_output' '/tmp/finch' '/var/lib/finch'; do SOCKET_PATH=\"$path/lima/data/finch/sock/creds.sock\"; echo \"Checking: $SOCKET_PATH\"; ls -la \"$SOCKET_PATH\" 2>/dev/null && echo \"Found socket!\" && break || echo \"Not found\"; done; fi").WithoutCheckingExitCode().Run()
 				fmt.Printf("🔌 Windows Socket Test:\n%s\n", string(socketTestResult.Out.Contents()))
 			} else {
 				// macOS should use /run/finch-user-sockets/creds.sock
@@ -233,8 +233,8 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 				fmt.Printf("🔌 macOS Socket Test:\n%s\n", string(socketTestResult.Out.Contents()))
 			}
 
-			// Test finchhost credential helper detection logic
-			detectionResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing detection logic:\"; if echo \"$PATH\" | grep -q '/mnt/c' || [ -n \"$WSL_DISTRO_NAME\" ]; then echo \"Detected: Windows/WSL\"; else echo \"Detected: macOS/Linux\"; fi").WithoutCheckingExitCode().Run()
+			// Test finchhost credential helper detection logic - fix Windows detection
+			detectionResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing detection logic:\"; echo \"PATH check: $PATH\"; echo \"WSL_DISTRO_NAME: $WSL_DISTRO_NAME\"; echo \"Checking /mnt/c:\"; ls -la /mnt/c 2>/dev/null && echo \"Found /mnt/c - Windows/WSL detected\" || echo \"No /mnt/c found\"; if [ -d '/mnt/c' ] || [ -n \"$WSL_DISTRO_NAME\" ]; then echo \"Final Detection: Windows/WSL\"; else echo \"Final Detection: macOS/Linux\"; fi").WithoutCheckingExitCode().Run()
 			fmt.Printf("🔌 Detection Logic:\n%s\n", string(detectionResult.Out.Contents()))
 		})
 
