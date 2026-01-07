@@ -41,16 +41,8 @@ func (h FinchHostCredentialHelper) List() (map[string]string, error) {
 func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error) {
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Get called for serverURL: %s\n", serverURL)
 
-	finchDir := os.Getenv("FINCH_DIR")
-	if finchDir == "" {
-		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_DIR not set\n")
-		return "", "", credentials.NewErrCredentialsNotFound()
-	}
-	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_DIR: %s\n", finchDir)
-
-	var credentialSocketPath string
 	// macOS: Use port-forwarded path
-	credentialSocketPath = "/run/finch-user-sockets/creds.sock"
+	credentialSocketPath := "/run/finch-user-sockets/creds.sock"
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Socket path: %s\n", credentialSocketPath)
 
 	conn, err := net.Dial("unix", credentialSocketPath)

@@ -1,4 +1,4 @@
-//go:build darwin || windows
+//go:build darwin
 
 package bridgecredhelper
 
@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/runfinch/finch/pkg/dependency/credhelper"
@@ -41,17 +40,7 @@ func getHelperPath(serverURL string) (string, error) {
 
 // Allow to fall back to OS default for case when no credStore found (for robustness)
 func getDefaultHelperPath() (string, error) {
-	var helperName string
-	switch runtime.GOOS {
-	case "darwin":
-		helperName = "docker-credential-osxkeychain"
-	case "windows":
-		helperName = "docker-credential-wincred.exe"
-	default:
-		return "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
-	}
-
-	return exec.LookPath(helperName)
+	return exec.LookPath("docker-credential-osxkeychain")
 }
 
 func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {

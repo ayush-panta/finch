@@ -355,7 +355,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
 			needsCredentials = true
 		}
-	case "build", "pull", "push", "run", "create":
+	case "build", "pull", "push", "run", "create", "container run", "container create", "image build", "image pull", "image push":
 		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
 		needsCredentials = true
 	}
