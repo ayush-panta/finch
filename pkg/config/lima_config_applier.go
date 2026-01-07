@@ -28,7 +28,6 @@ const (
 	sociFileNameFormat                       = "soci-snapshotter-%s-linux-%s.tar.gz"
 	sociDownloadURLFormat                    = "https://github.com/awslabs/soci-snapshotter/releases/download/v%s/%s"
 	sociServiceDownloadURLFormat             = "https://raw.githubusercontent.com/awslabs/soci-snapshotter/v%s/soci-snapshotter.service"
-
 	//nolint:lll // command string
 	sociInstallationScriptFormat = `%s
 if [ ! -f /usr/local/bin/soci ]; then

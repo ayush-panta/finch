@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //go:build darwin || windows
+//go:build darwin
 
 package vm
 
@@ -271,7 +272,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Step 2: Start background monitoring on BOTH host and VM
 			fmt.Printf("🔌 Step 2: Starting background socket monitoring on host and VM\n")
-			
+
 			// Host monitor
 			socketFoundOnHost := false
 			hostMonitorDone := make(chan bool, 1)
@@ -296,7 +297,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 					}
 				}
 			}()
-			
+
 			// VM monitor - check platform-specific socket paths
 			socketFoundInVM := false
 			vmMonitorDone := make(chan bool, 1)
@@ -321,7 +322,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 							// Check macOS port-forwarded path
 							vmSocketCheck = command.New(limaOpt, "shell", "finch", "sh", "-c", "if [ -S '/run/finch-user-sockets/creds.sock' ]; then echo 'FOUND:/run/finch-user-sockets/creds.sock'; exit 0; else exit 1; fi")
 						}
-						
+
 						result := vmSocketCheck.WithoutCheckingExitCode().Run()
 						if result.ExitCode() == 0 {
 							fmt.Printf("🔌 SOCKET_FOUND in VM: %s\n", strings.TrimSpace(string(result.Out.Contents())))
@@ -343,7 +344,7 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 
 			// Step 4: Check socket detection results
 			fmt.Printf("🔌 Step 4: Checking socket detection results\n")
-			
+
 			// Report host socket status
 			if socketFoundOnHost {
 				fmt.Printf("🔌 ✅ Socket was created on host during operation (now cleaned up)\n")
@@ -355,13 +356,13 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 					fmt.Printf("🔌 ❌ Socket was NOT detected on host during operation\n")
 				}
 			}
-			
+
 			// Report VM socket status
 			if socketFoundInVM {
 				fmt.Printf("🔌 ✅ Socket was accessible in VM during operation\n")
 			} else {
 				fmt.Printf("🔌 ❌ Socket was NOT accessible in VM during operation\n")
-				
+
 				// Double-check VM socket paths now
 				fmt.Printf("🔌 Double-checking VM socket paths after operation...\n")
 				if runtime.GOOS == "windows" {

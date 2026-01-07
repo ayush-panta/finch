@@ -342,17 +342,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 
 	var additionalEnv []string
 
-	// Need to pass .finch dir into environment (like in nerdctl_config_applier.go)
-	homeDir, _ := os.UserHomeDir()
-	finchDir := filepath.Join(homeDir, ".finch")
-	if runtime.GOOS == "windows" {
-		additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=$(/usr/bin/wslpath '%s')", finchDir))
-		additionalEnv = append(additionalEnv, "FINCH_HOST_OS=windows")
-	} else {
-		additionalEnv = append(additionalEnv, fmt.Sprintf("FINCH_DIR=%s", finchDir))
-		additionalEnv = append(additionalEnv, "FINCH_HOST_OS=darwin")
-	}
-
+	// needsCredentials set to true for commands that require remote registry access
 	needsCredentials := false
 	switch cmdName {
 	case "image":
@@ -365,9 +355,6 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
 			needsCredentials = true
 		}
-	case "container run", "container create":
-		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
-		needsCredentials = true
 	case "build", "pull", "push", "run", "create":
 		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
 		needsCredentials = true
@@ -398,7 +385,7 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 		return nil
 	}
 
-	if needsCredentials {
+	if needsCredentials && runtime.GOOS == "darwin" {
 		execPath, err := os.Executable()
 		if err != nil {
 			return err

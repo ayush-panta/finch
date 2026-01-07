@@ -1,3 +1,5 @@
+//go:build darwin
+
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -38,7 +40,7 @@ func (h FinchHostCredentialHelper) List() (map[string]string, error) {
 // Get retrieves credentials via socket to host.
 func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error) {
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Get called for serverURL: %s\n", serverURL)
-	
+
 	finchDir := os.Getenv("FINCH_DIR")
 	if finchDir == "" {
 		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_DIR not set\n")
@@ -47,34 +49,8 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_DIR: %s\n", finchDir)
 
 	var credentialSocketPath string
-	hostOS := os.Getenv("FINCH_HOST_OS")
-	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] FINCH_HOST_OS: %s\n", hostOS)
-	if hostOS == "windows" {
-		// Windows: Check only the two most common paths
-		searchPaths := []string{
-			"/c/actions-runner/_work/finch/finch/_output/lima/data/finch/sock/creds.sock", // CI path
-			"/mnt/c/Program Files/Finch/lima/data/finch/sock/creds.sock",                 // Standard install
-		}
-		
-		for _, path := range searchPaths {
-			fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Checking path: %s\n", path)
-			if _, err := os.Stat(path); err == nil {
-				credentialSocketPath = path
-				fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Found socket at: %s\n", credentialSocketPath)
-				break
-			} else {
-				fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Socket not found at: %s (error: %v)\n", path, err)
-			}
-		}
-		
-		if credentialSocketPath == "" {
-			credentialSocketPath = "/mnt/c/Program Files/Finch/lima/data/finch/sock/creds.sock" // fallback
-			fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] No socket found, using fallback: %s\n", credentialSocketPath)
-		}
-	} else {
-		// macOS: Use port-forwarded path
-		credentialSocketPath = "/run/finch-user-sockets/creds.sock"
-	}
+	// macOS: Use port-forwarded path
+	credentialSocketPath = "/run/finch-user-sockets/creds.sock"
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Socket path: %s\n", credentialSocketPath)
 
 	conn, err := net.Dial("unix", credentialSocketPath)

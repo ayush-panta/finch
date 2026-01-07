@@ -177,40 +177,16 @@ finch-native: finch-all
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
 	"$(MAKE)" build-credential-helper
-	"$(MAKE)" setup-credential-config
 
 .PHONY: build-credential-helper
 build-credential-helper:
+ifeq ($(GOOS),darwin)
 	# Build finchhost credential helper for VM
 	GOOS=linux GOARCH=$(shell go env GOARCH) $(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/docker-credential-finchhost $(PACKAGE)/cmd/finchhost-credential-helper
-	# Ensure output cred-helpers directory exists
-	mkdir -p $(OUTDIR)/cred-helpers
-	cp $(OUTDIR)/bin/docker-credential-finchhost $(OUTDIR)/cred-helpers/
-ifeq ($(GOOS),windows)
-	# Copy to WSL2's automatic C: mount location
-	mkdir -p C:/finchhost
-	cp $(OUTDIR)/bin/docker-credential-finchhost C:/finchhost/
-else
 	# Copy to /tmp/lima which is mounted in macOS VM
 	mkdir -p /tmp/lima/finchhost
 	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/lima/finchhost/
 	chmod +x /tmp/lima/finchhost/docker-credential-finchhost
-endif
-
-.PHONY: setup-credential-config
-setup-credential-config:
-	# Create host config.json with platform-appropriate credential store
-ifeq ($(GOOS),darwin)
-	mkdir -p ~/.finch
-	@if [ ! -f ~/.finch/config.json ]; then \
-		echo '{"credsStore": "osxkeychain"}' > ~/.finch/config.json; \
-		echo "Created ~/.finch/config.json with osxkeychain"; \
-	else \
-		echo "~/.finch/config.json already exists, skipping"; \
-	fi
-else ifeq ($(GOOS),windows)
-	cmd /c "if not exist "%LOCALAPPDATA%\.finch" mkdir "%LOCALAPPDATA%\.finch""
-	cmd /c "if not exist "%LOCALAPPDATA%\.finch\config.json" echo {\"credsStore\": \"wincred\"} > "%LOCALAPPDATA%\.finch\config.json""
 endif
 
 .PHONY: release

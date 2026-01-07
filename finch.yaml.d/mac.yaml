@@ -21,6 +21,15 @@ provision:
 
       sudo systemctl daemon-reload
       sudo systemctl enable --now finch@${UID}
+  - mode: user
+    script: |
+      #!/bin/bash
+      # Install finchhost credential helper to PATH
+      if [ -f /tmp/lima/finchhost/docker-credential-finchhost ]; then
+        sudo cp /tmp/lima/finchhost/docker-credential-finchhost /usr/bin/docker-credential-finchhost
+        sudo chmod +x /usr/bin/docker-credential-finchhost
+      fi
+
 mounts:
   - location: "~"
     mountPoint: null

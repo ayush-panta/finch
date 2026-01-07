@@ -89,21 +89,32 @@ func addLineToBashrc(fs afero.Fs, profileFilePath string, profStr string, cmd st
 // [registry nerdctl docs]: https://github.com/containerd/nerdctl/blob/master/docs/registry.md
 
 func updateEnvironment(fs afero.Fs, fc *Finch, finchDir, homeDir, limaVMHomeDir string) error {
-	cmdArr := []string{
-		`export PATH="/usr/bin:/usr/local/bin:$PATH"`,
-		`export DOCKER_CONFIG="$FINCH_DIR/vm-config"`,
-		`[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`,
-		// Create VM config directory and file
-		`mkdir -p "$FINCH_DIR/vm-config"`,
-		`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
-	}
 
-	// Use the first credhelper in the list in finch.yaml
-	// If user removed all for some reason, will do nothing
-	// Only create config.json if it doesn't already exist
-	if len(fc.CredsHelpers) > 0 {
-		cmdArr = append(cmdArr, fmt.Sprintf(`[ ! -f "$FINCH_DIR"/config.json ] && `+
-			`echo '{"credsStore": "%s"}' > "$FINCH_DIR"/config.json`, fc.CredsHelpers[0]))
+	var cmdArr []string
+	if *fc.VMType == "wsl2" {
+		cmdArr = []string{
+			`export DOCKER_CONFIG="$FINCH_DIR"`,
+		}
+	} else {
+		cmdArr = []string{
+			// Re-directing nerdctl path to VM-specific docker config
+			`export PATH="/usr/bin:/usr/local/bin:$PATH"`,
+			`export DOCKER_CONFIG="$FINCH_DIR/vm-config"`,
+			`mkdir -p "$FINCH_DIR/vm-config"`,
+			`echo '{"credsStore": "finchhost"}' > "$FINCH_DIR/vm-config/config.json"`,
+		}
+	}
+	cmdArr = append(cmdArr, `[ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws`)
+
+	// Keep original logic for WSL; no native credstore integration
+	if *fc.VMType == "wsl2" {
+		const configureCredHelperTemplate = `([ -e "$FINCH_DIR"/cred-helpers/docker-credential-%s ] || \
+	(echo "error: docker-credential-%s not found in $FINCH_DIR/cred-helpers directory.")) && \
+	([ -L /usr/local/bin/docker-credential-%s ] || sudo ln -s "$FINCH_DIR"/cred-helpers/docker-credential-%s /usr/local/bin)`
+
+		for _, credHelper := range fc.CredsHelpers {
+			cmdArr = append(cmdArr, fmt.Sprintf(configureCredHelperTemplate, credHelper, credHelper, credHelper, credHelper))
+		}
 	}
 
 	awsDir := fmt.Sprintf("%s/.aws", homeDir)

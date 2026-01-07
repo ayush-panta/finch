@@ -72,15 +72,6 @@ provision:
       sudo cp ~/.ssh/authorized_keys /root/.ssh/
       sudo chown $USER /mnt/lima-finch
 
-      # Install finchhost credential helper to PATH
-      if [ -f /tmp/lima/finchhost/docker-credential-finchhost ]; then
-        sudo cp /tmp/lima/finchhost/docker-credential-finchhost /usr/bin/docker-credential-finchhost
-        sudo chmod +x /usr/bin/docker-credential-finchhost
-      elif [ -f /mnt/c/finchhost/docker-credential-finchhost ]; then
-        sudo cp /mnt/c/finchhost/docker-credential-finchhost /usr/bin/docker-credential-finchhost
-        sudo chmod +x /usr/bin/docker-credential-finchhost
-      fi
-
       # This block of configuration facilitates the startup of rootless containers created prior to this change within the rootful vm configuration by mounting /mnt/lima-finch to both rootless and rootful dataroots.   
 
       # https://github.com/containerd/containerd/blob/main/docs/ops.md#base-configuration

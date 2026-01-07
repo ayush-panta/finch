@@ -73,7 +73,6 @@ func TestVM(t *testing.T) {
 		// testVersion(o)
 		// testSupportBundle(o)
 		// testCredHelper(o, *e2e.Installed, *e2e.Registry)
-		testNativeCredHelper(o, *e2e.Installed)
 		// testSoci(o, *e2e.Installed)
 		// testMSIInstallPermission(o, *e2e.Installed)
 	})

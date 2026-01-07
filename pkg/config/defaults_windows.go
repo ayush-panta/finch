@@ -18,12 +18,6 @@ func vmDefault(cfg *Finch) {
 	}
 }
 
-func credhelperDefault(cfg *Finch) {
-	if cfg.CredsHelpers == nil {
-		cfg.CredsHelpers = []string{"wincred"}
-	}
-}
-
 // applyDefaults sets default configuration options if they are not already set.
 func applyDefaults(
 	cfg *Finch,
@@ -32,6 +26,5 @@ func applyDefaults(
 	_ command.Creator,
 ) *Finch {
 	vmDefault(cfg)
-	credhelperDefault(cfg)
 	return cfg
 }

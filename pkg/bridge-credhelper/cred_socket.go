@@ -1,4 +1,4 @@
-//go:build darwin || windows
+//go:build darwin
 
 // Package bridgecredhelper provides credential helper bridge functionality for Finch.
 package bridgecredhelper
