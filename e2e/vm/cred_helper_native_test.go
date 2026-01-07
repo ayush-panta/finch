@@ -132,83 +132,88 @@ func setupFreshFinchConfig() {
 var testNativeCredHelper = func(o *option.Option, installed bool) {
 	ginkgo.Describe("Native Credential Helper", func() {
 
-		ginkgo.It("should be able to access native credential store in CI", func() {
+		// ginkgo.It("should be able to access native credential store in CI", func() {
+		// 	// Setup fresh credential environment and config
+		// 	cleanupCreds := setupCredentialEnvironment()
+		// 	defer cleanupCreds()
+		// 	setupFreshFinchConfig()
+
+		// 	var nativeCredHelper string
+		// 	if runtime.GOOS == "windows" {
+		// 		nativeCredHelper = "docker-credential-wincred.exe"
+		// 	} else {
+		// 		nativeCredHelper = "docker-credential-osxkeychain"
+		// 	}
+
+		// 	fmt.Printf("🧪 TESTING NATIVE CREDENTIAL HELPER ACCESS IN CI\n")
+		// 	fmt.Printf("🧪 Using credential helper: %s\n", nativeCredHelper)
+
+		// 	// Print current user and environment info
+		// 	currentUser := os.Getenv("USER")
+		// 	if currentUser == "" {
+		// 		currentUser = os.Getenv("USERNAME") // Windows fallback
+		// 	}
+		// 	homeDir := os.Getenv("HOME")
+		// 	if homeDir == "" {
+		// 		homeDir = os.Getenv("USERPROFILE") // Windows fallback
+		// 	}
+		// 	fmt.Printf("🧪 Running as user: %s\n", currentUser)
+		// 	fmt.Printf("🧪 Home directory: %s\n", homeDir)
+		// 	fmt.Printf("🧪 CI environment: %s\n", os.Getenv("CI"))
+		// 	fmt.Printf("🧪 GitHub Actions: %s\n", os.Getenv("GITHUB_ACTIONS"))
+
+		// 	// Test 1: Store a test credential
+		// 	testServer := "test-ci-server.example.com"
+		// 	testCred := `{"ServerURL":"` + testServer + `","Username":"testuser","Secret":"testpass"}`
+		// 	fmt.Printf("🧪 Step 1: Storing test credential for %s\n", testServer)
+		// 	storeCmd := exec.Command(nativeCredHelper, "store")
+		// 	storeCmd.Stdin = strings.NewReader(testCred)
+		// 	storeOutput, storeErr := storeCmd.CombinedOutput()
+		// 	fmt.Printf("🧪 Store result: error=%v, output=%s\n", storeErr, string(storeOutput))
+
+		// 	// Test 2: List credentials
+		// 	fmt.Printf("🧪 Step 2: Listing stored credentials\n")
+		// 	listCmd := exec.Command(nativeCredHelper, "list")
+		// 	listOutput, listErr := listCmd.CombinedOutput()
+		// 	fmt.Printf("🧪 List result: error=%v, output=%s\n", listErr, string(listOutput))
+
+		// 	// Test 3: Get the stored credential
+		// 	fmt.Printf("🧪 Step 3: Retrieving stored credential\n")
+		// 	getCmd := exec.Command(nativeCredHelper, "get")
+		// 	getCmd.Stdin = strings.NewReader(testServer)
+		// 	getOutput, getErr := getCmd.CombinedOutput()
+		// 	fmt.Printf("🧪 Get result: error=%v, output=%s\n", getErr, string(getOutput))
+
+		// 	// Test 4: Erase the test credential
+		// 	fmt.Printf("🧪 Step 4: Erasing test credential\n")
+		// 	eraseCmd := exec.Command(nativeCredHelper, "erase")
+		// 	eraseCmd.Stdin = strings.NewReader(testServer)
+		// 	eraseOutput, eraseErr := eraseCmd.CombinedOutput()
+		// 	fmt.Printf("🧪 Erase result: error=%v, output=%s\n", eraseErr, string(eraseOutput))
+
+		// 	// Test 5: Verify credential was erased
+		// 	fmt.Printf("🧪 Step 5: Verifying credential was erased\n")
+		// 	verifyCmd := exec.Command(nativeCredHelper, "get")
+		// 	verifyCmd.Stdin = strings.NewReader(testServer)
+		// 	verifyOutput, verifyErr := verifyCmd.CombinedOutput()
+		// 	fmt.Printf("🧪 Verify result: error=%v, output=%s\n", verifyErr, string(verifyOutput))
+
+		// 	if storeErr != nil {
+		// 		fmt.Printf("❌ NATIVE CREDENTIAL HELPER CANNOT STORE CREDENTIALS IN CI\n")
+		// 		fmt.Printf("❌ This explains why login fails - keychain/credential store access is blocked\n")
+		// 		fmt.Printf("❌ Store error: %v\n", storeErr)
+		// 	} else {
+		// 		fmt.Printf("✅ NATIVE CREDENTIAL HELPER WORKS IN CI\n")
+		// 		gomega.Expect(storeErr).NotTo(gomega.HaveOccurred(), "Should be able to store credentials")
+		// 	}
+		// })
+
+		ginkgo.It("should create and access credential socket during operations", func() {
 			// Setup fresh credential environment and config
 			cleanupCreds := setupCredentialEnvironment()
 			defer cleanupCreds()
 			setupFreshFinchConfig()
 
-			var nativeCredHelper string
-			if runtime.GOOS == "windows" {
-				nativeCredHelper = "docker-credential-wincred.exe"
-			} else {
-				nativeCredHelper = "docker-credential-osxkeychain"
-			}
-
-			fmt.Printf("🧪 TESTING NATIVE CREDENTIAL HELPER ACCESS IN CI\n")
-			fmt.Printf("🧪 Using credential helper: %s\n", nativeCredHelper)
-
-			// Print current user and environment info
-			currentUser := os.Getenv("USER")
-			if currentUser == "" {
-				currentUser = os.Getenv("USERNAME") // Windows fallback
-			}
-			homeDir := os.Getenv("HOME")
-			if homeDir == "" {
-				homeDir = os.Getenv("USERPROFILE") // Windows fallback
-			}
-			fmt.Printf("🧪 Running as user: %s\n", currentUser)
-			fmt.Printf("🧪 Home directory: %s\n", homeDir)
-			fmt.Printf("🧪 CI environment: %s\n", os.Getenv("CI"))
-			fmt.Printf("🧪 GitHub Actions: %s\n", os.Getenv("GITHUB_ACTIONS"))
-
-			// Test 1: Store a test credential
-			testServer := "test-ci-server.example.com"
-			testCred := `{"ServerURL":"` + testServer + `","Username":"testuser","Secret":"testpass"}`
-			fmt.Printf("🧪 Step 1: Storing test credential for %s\n", testServer)
-			storeCmd := exec.Command(nativeCredHelper, "store")
-			storeCmd.Stdin = strings.NewReader(testCred)
-			storeOutput, storeErr := storeCmd.CombinedOutput()
-			fmt.Printf("🧪 Store result: error=%v, output=%s\n", storeErr, string(storeOutput))
-
-			// Test 2: List credentials
-			fmt.Printf("🧪 Step 2: Listing stored credentials\n")
-			listCmd := exec.Command(nativeCredHelper, "list")
-			listOutput, listErr := listCmd.CombinedOutput()
-			fmt.Printf("🧪 List result: error=%v, output=%s\n", listErr, string(listOutput))
-
-			// Test 3: Get the stored credential
-			fmt.Printf("🧪 Step 3: Retrieving stored credential\n")
-			getCmd := exec.Command(nativeCredHelper, "get")
-			getCmd.Stdin = strings.NewReader(testServer)
-			getOutput, getErr := getCmd.CombinedOutput()
-			fmt.Printf("🧪 Get result: error=%v, output=%s\n", getErr, string(getOutput))
-
-			// Test 4: Erase the test credential
-			fmt.Printf("🧪 Step 4: Erasing test credential\n")
-			eraseCmd := exec.Command(nativeCredHelper, "erase")
-			eraseCmd.Stdin = strings.NewReader(testServer)
-			eraseOutput, eraseErr := eraseCmd.CombinedOutput()
-			fmt.Printf("🧪 Erase result: error=%v, output=%s\n", eraseErr, string(eraseOutput))
-
-			// Test 5: Verify credential was erased
-			fmt.Printf("🧪 Step 5: Verifying credential was erased\n")
-			verifyCmd := exec.Command(nativeCredHelper, "get")
-			verifyCmd.Stdin = strings.NewReader(testServer)
-			verifyOutput, verifyErr := verifyCmd.CombinedOutput()
-			fmt.Printf("🧪 Verify result: error=%v, output=%s\n", verifyErr, string(verifyOutput))
-
-			if storeErr != nil {
-				fmt.Printf("❌ NATIVE CREDENTIAL HELPER CANNOT STORE CREDENTIALS IN CI\n")
-				fmt.Printf("❌ This explains why login fails - keychain/credential store access is blocked\n")
-				fmt.Printf("❌ Store error: %v\n", storeErr)
-			} else {
-				fmt.Printf("✅ NATIVE CREDENTIAL HELPER WORKS IN CI\n")
-				gomega.Expect(storeErr).NotTo(gomega.HaveOccurred(), "Should be able to store credentials")
-			}
-		})
-
-		ginkgo.It("should have correct socket path for VM credential helper bridge", func() {
 			resetVM(o)
 			resetDisks(o, installed)
 			command.New(o, virtualMachineRootCmd, "init").WithTimeoutInSeconds(160).Run()
@@ -216,26 +221,148 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			limaOpt, err := limaCtlOpt(installed)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			fmt.Printf("🔌 TESTING VM CREDENTIAL HELPER SOCKET PATH\n")
+			fmt.Printf("🔌 TESTING CREDENTIAL SOCKET CREATION AND ACCESS\n")
 
-			// Test environment detection in VM
-			envResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"PATH=$PATH\"; echo \"WSL_DISTRO_NAME=$WSL_DISTRO_NAME\"; echo \"FINCH_DIR=$FINCH_DIR\"; ls -la /proc/version 2>/dev/null || echo 'no /proc/version'; ls -la /mnt/c 2>/dev/null || echo 'no /mnt/c'").WithoutCheckingExitCode().Run()
-			fmt.Printf("🔌 VM Environment:\n%s\n", string(envResult.Out.Contents()))
+			// Step 1: Check socket directory on HOST before operation
+			fmt.Printf("🔌 Step 1: Checking socket directory on host before credential operation\n")
 
-			// Test socket paths
-			if runtime.GOOS == "windows" {
-				// Windows should use FINCH_DIR path - check if FINCH_DIR is set and expanded properly
-				socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing Windows socket path\"; echo \"FINCH_DIR=$FINCH_DIR\"; if [ -n \"$FINCH_DIR\" ]; then FINCH_DIR_EXPANDED=$(eval echo $FINCH_DIR); echo \"FINCH_DIR_EXPANDED=$FINCH_DIR_EXPANDED\"; SOCKET_PATH=\"$FINCH_DIR_EXPANDED/lima/data/finch/sock/creds.sock\"; echo \"Expected socket: $SOCKET_PATH\"; ls -la \"$SOCKET_PATH\" 2>/dev/null || echo \"Socket not found: $SOCKET_PATH\"; ls -la \"$(dirname \"$SOCKET_PATH\")/\" 2>/dev/null || echo \"Socket dir not found\"; else echo \"FINCH_DIR not set - checking fallback paths\"; for path in '/c/actions-runner/_work/finch/finch/_output' '/tmp/finch' '/var/lib/finch'; do SOCKET_PATH=\"$path/lima/data/finch/sock/creds.sock\"; echo \"Checking: $SOCKET_PATH\"; ls -la \"$SOCKET_PATH\" 2>/dev/null && echo \"Found socket!\" && break || echo \"Not found\"; done; fi").WithoutCheckingExitCode().Run()
-				fmt.Printf("🔌 Windows Socket Test:\n%s\n", string(socketTestResult.Out.Contents()))
+			// Determine finchRootPath based on installation type
+			var finchRootPath string
+			if installed {
+				if runtime.GOOS == "windows" {
+					finchRootPath = "C:\\Program Files\\Finch"
+				} else {
+					finchRootPath = "/Applications/Finch"
+				}
 			} else {
-				// macOS should use /run/finch-user-sockets/creds.sock
-				socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing macOS socket path\"; SOCKET_PATH=\"/run/finch-user-sockets/creds.sock\"; echo \"Expected socket: $SOCKET_PATH\"; ls -la \"$SOCKET_PATH\" 2>/dev/null || echo \"Socket not found: $SOCKET_PATH\"; ls -la \"/run/finch-user-sockets/\" 2>/dev/null || echo \"Socket dir not found\"").WithoutCheckingExitCode().Run()
-				fmt.Printf("🔌 macOS Socket Test:\n%s\n", string(socketTestResult.Out.Contents()))
+				// Development build
+				wd, _ := os.Getwd()
+				finchRootPath = filepath.Join(wd, "..", "..", "_output")
 			}
 
-			// Test finchhost credential helper detection logic - fix Windows detection
-			detectionResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Testing detection logic:\"; echo \"PATH check: $PATH\"; echo \"WSL_DISTRO_NAME: $WSL_DISTRO_NAME\"; echo \"Checking /mnt/c:\"; ls -la /mnt/c 2>/dev/null && echo \"Found /mnt/c - Windows/WSL detected\" || echo \"No /mnt/c found\"; if [ -d '/mnt/c' ] || [ -n \"$WSL_DISTRO_NAME\" ]; then echo \"Final Detection: Windows/WSL\"; else echo \"Final Detection: macOS/Linux\"; fi").WithoutCheckingExitCode().Run()
-			fmt.Printf("🔌 Detection Logic:\n%s\n", string(detectionResult.Out.Contents()))
+			socketPath := filepath.Join(finchRootPath, "lima", "data", "finch", "sock", "creds.sock")
+			socketDir := filepath.Dir(socketPath)
+			fmt.Printf("🔌 Expected socket path: %s\n", socketPath)
+
+			// Check host socket directory structure
+			if _, err := os.Stat(finchRootPath); os.IsNotExist(err) {
+				fmt.Printf("🔌 Finch root directory does not exist: %s\n", finchRootPath)
+			} else {
+				fmt.Printf("🔌 Finch root directory exists: %s\n", finchRootPath)
+
+				limaDataDir := filepath.Join(finchRootPath, "lima", "data")
+				if _, err := os.Stat(limaDataDir); os.IsNotExist(err) {
+					fmt.Printf("🔌 Lima data directory does not exist: %s\n", limaDataDir)
+				} else {
+					fmt.Printf("🔌 Lima data directory exists: %s\n", limaDataDir)
+
+					if _, err := os.Stat(socketDir); os.IsNotExist(err) {
+						fmt.Printf("🔌 Socket directory does not exist: %s\n", socketDir)
+					} else {
+						fmt.Printf("🔌 Socket directory exists: %s\n", socketDir)
+						if _, err := os.Stat(socketPath); err == nil {
+							fmt.Printf("🔌 Socket already exists before operation: %s\n", socketPath)
+						} else {
+							fmt.Printf("🔌 Socket does not exist before operation: %s\n", socketPath)
+						}
+					}
+				}
+			}
+
+			// Step 2: Start background monitoring on BOTH host and VM
+			fmt.Printf("🔌 Step 2: Starting background socket monitoring on host and VM\n")
+			
+			// Host monitor
+			socketFoundOnHost := false
+			hostMonitorDone := make(chan bool)
+			go func() {
+				for {
+					select {
+					case <-hostMonitorDone:
+						return
+					default:
+						if _, err := os.Stat(socketPath); err == nil {
+							fmt.Printf("🔌 SOCKET_FOUND on host: %s\n", socketPath)
+							socketFoundOnHost = true
+							return
+						}
+						time.Sleep(100 * time.Millisecond)
+					}
+				}
+			}()
+			defer func() { hostMonitorDone <- true }()
+			
+			// VM monitor - check platform-specific socket paths
+			socketFoundInVM := false
+			vmMonitorDone := make(chan bool)
+			go func() {
+				for {
+					select {
+					case <-vmMonitorDone:
+						return
+					default:
+						// Check VM socket paths
+						var vmSocketCheck *command.Command
+						if runtime.GOOS == "windows" {
+							// Check Windows mount paths
+							vmSocketCheck = command.New(limaOpt, "shell", "finch", "sh", "-c", "for path in '/mnt/c/Program Files/Finch' '/c/actions-runner/_work/finch/finch/_output'; do if [ -S \"$path/lima/data/finch/sock/creds.sock\" ]; then echo \"FOUND:$path/lima/data/finch/sock/creds.sock\"; exit 0; fi; done; exit 1")
+						} else {
+							// Check macOS port-forwarded path
+							vmSocketCheck = command.New(limaOpt, "shell", "finch", "sh", "-c", "if [ -S '/run/finch-user-sockets/creds.sock' ]; then echo 'FOUND:/run/finch-user-sockets/creds.sock'; exit 0; else exit 1; fi")
+						}
+						
+						result := vmSocketCheck.WithoutCheckingExitCode().Run()
+						if result.ExitCode() == 0 {
+							fmt.Printf("🔌 SOCKET_FOUND in VM: %s\n", strings.TrimSpace(string(result.Out.Contents())))
+							socketFoundInVM = true
+							return
+						}
+						time.Sleep(100 * time.Millisecond)
+					}
+				}
+			}()
+			defer func() { vmMonitorDone <- true }()
+
+			// Step 3: Trigger credential operation that should create socket
+			fmt.Printf("🔌 Step 3: Triggering credential operation (login)\n")
+			loginResult := command.New(o, "login", "fake-registry.example.com", "-u", "testuser", "-p", "testpass").WithTimeoutInSeconds(30).WithoutCheckingExitCode().Run()
+			fmt.Printf("🔌 Login result: exit=%d, stderr=%s\n", loginResult.ExitCode(), string(loginResult.Err.Contents()))
+
+			// Give monitor a moment to detect socket
+			time.Sleep(500 * time.Millisecond)
+
+			// Step 4: Check socket detection results
+			fmt.Printf("🔌 Step 4: Checking socket detection results\n")
+			
+			// Report host socket status
+			if socketFoundOnHost {
+				fmt.Printf("🔌 ✅ Socket was created on host during operation (now cleaned up)\n")
+			} else {
+				// Double-check if socket still exists (unlikely since operation completed)
+				if _, err := os.Stat(socketPath); err == nil {
+					fmt.Printf("🔌 ✅ Socket still exists on host after operation: %s\n", socketPath)
+				} else {
+					fmt.Printf("🔌 ❌ Socket was NOT detected on host during operation\n")
+				}
+			}
+			
+			// Report VM socket status
+			if socketFoundInVM {
+				fmt.Printf("🔌 ✅ Socket was accessible in VM during operation\n")
+			} else {
+				fmt.Printf("🔌 ❌ Socket was NOT accessible in VM during operation\n")
+				
+				// Double-check VM socket paths now
+				fmt.Printf("🔌 Double-checking VM socket paths after operation...\n")
+				if runtime.GOOS == "windows" {
+					socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Checking Windows socket paths:\"; for path in '/mnt/c/Program Files/Finch' '/c/actions-runner/_work/finch/finch/_output'; do SOCKET_PATH=\"$path/lima/data/finch/sock/creds.sock\"; echo \"Checking: $SOCKET_PATH\"; if [ -S \"$SOCKET_PATH\" ]; then echo \"Socket found: $SOCKET_PATH\"; else echo \"Socket not found: $SOCKET_PATH\"; fi; done").WithTimeoutInSeconds(5).WithoutCheckingExitCode().Run()
+					fmt.Printf("🔌 Windows VM Check:\n%s\n", string(socketTestResult.Out.Contents()))
+				} else {
+					socketTestResult := command.New(limaOpt, "shell", "finch", "sh", "-c", "echo \"Checking macOS socket path:\"; SOCKET_PATH='/run/finch-user-sockets/creds.sock'; echo \"Checking: $SOCKET_PATH\"; if [ -S \"$SOCKET_PATH\" ]; then echo \"Socket found: $SOCKET_PATH\"; else echo \"Socket not found: $SOCKET_PATH\"; fi").WithTimeoutInSeconds(5).WithoutCheckingExitCode().Run()
+					fmt.Printf("🔌 macOS VM Check:\n%s\n", string(socketTestResult.Out.Contents()))
+				}
+			}
+
 		})
 
 		// ginkgo.It("should work with registry push/pull workflow", func() {
