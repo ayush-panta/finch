@@ -54,12 +54,16 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 		// Windows: Search for socket in all possible mount locations
 		// Check both /mnt/ and direct mount styles for all drives
 		searchPaths := []string{
-			"/mnt/*/lima/data/finch/sock/creds.sock",       // Any drive standard mount
-			"/*/lima/data/finch/sock/creds.sock",           // Any drive alternative mount  
-			"/mnt/*/*/lima/data/finch/sock/creds.sock",     // Nested in any drive
-			"/*/*/lima/data/finch/sock/creds.sock",         // Nested alternative mount
-			"/mnt/*/*/*/lima/data/finch/sock/creds.sock",   // Deep nested paths
-			"/*/*/*/lima/data/finch/sock/creds.sock",       // Deep nested alternative
+			"/mnt/*/lima/data/finch/sock/creds.sock",         // Standard install: /mnt/c/Program Files/Finch/
+			"/*/lima/data/finch/sock/creds.sock",             // Alt mount: /c/Program Files/Finch/
+			"/mnt/*/*/lima/data/finch/sock/creds.sock",       // 2 levels: /mnt/c/MyDir/
+			"/*/*/lima/data/finch/sock/creds.sock",           // 2 levels: /c/MyDir/
+			"/mnt/*/*/*/lima/data/finch/sock/creds.sock",     // 3 levels
+			"/*/*/*/lima/data/finch/sock/creds.sock",         // 3 levels
+			"/mnt/*/*/*/*/lima/data/finch/sock/creds.sock",   // 4 levels
+			"/*/*/*/*/lima/data/finch/sock/creds.sock",       // 4 levels
+			"/mnt/*/*/*/*/*/lima/data/finch/sock/creds.sock", // 5 levels
+			"/*/*/*/*/*/lima/data/finch/sock/creds.sock",     // 5 levels: /c/actions-runner/_work/finch/finch/_output/
 		}
 		
 		for _, pattern := range searchPaths {
@@ -72,8 +76,16 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 		}
 		
 		if credentialSocketPath == "" {
-			credentialSocketPath = "/mnt/c/Program Files/Finch/lima/data/finch/sock/creds.sock" // fallback
-			fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] No socket found, using fallback: %s\n", credentialSocketPath)
+			// Direct check for the known CI path
+			ciPath := "/c/actions-runner/_work/finch/finch/_output/lima/data/finch/sock/creds.sock"
+			fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Trying direct CI path: %s\n", ciPath)
+			if _, err := os.Stat(ciPath); err == nil {
+				credentialSocketPath = ciPath
+				fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Found socket at CI path: %s\n", credentialSocketPath)
+			} else {
+				credentialSocketPath = "/mnt/c/Program Files/Finch/lima/data/finch/sock/creds.sock" // fallback
+				fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] No socket found, using fallback: %s\n", credentialSocketPath)
+			}
 		}
 	} else {
 		// macOS: Use port-forwarded path
