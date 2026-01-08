@@ -55,11 +55,24 @@ func setupCredentialEnvironment() func() {
 		err = os.MkdirAll(keychainsDir, 0755)
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-		// Create and setup keychain
-		exec.Command("security", "create-keychain", "-p", keychainPassword, loginKeychainPath).Run()
-		exec.Command("security", "unlock-keychain", "-p", keychainPassword, loginKeychainPath).Run()
-		exec.Command("security", "list-keychains", "-s", loginKeychainPath, "/Library/Keychains/System.keychain").Run()
-		exec.Command("security", "default-keychain", "-s", loginKeychainPath).Run()
+		// Create and setup keychain with error checking
+		if err := exec.Command("security", "create-keychain", "-p", keychainPassword, loginKeychainPath).Run(); err != nil {
+			fmt.Printf("Failed to create keychain: %v\n", err)
+		}
+		if err := exec.Command("security", "unlock-keychain", "-p", keychainPassword, loginKeychainPath).Run(); err != nil {
+			fmt.Printf("Failed to unlock keychain: %v\n", err)
+		}
+		if err := exec.Command("security", "list-keychains", "-s", loginKeychainPath, "/Library/Keychains/System.keychain").Run(); err != nil {
+			fmt.Printf("Failed to set keychain list: %v\n", err)
+		}
+		if err := exec.Command("security", "default-keychain", "-s", loginKeychainPath).Run(); err != nil {
+			fmt.Printf("Failed to set default keychain: %v\n", err)
+		}
+
+		// Set keychain timeout to prevent auto-lock during test
+		if err := exec.Command("security", "set-keychain-settings", "-t", "3600", "-l", loginKeychainPath).Run(); err != nil {
+			fmt.Printf("Failed to set keychain settings: %v\n", err)
+		}
 
 		// Return cleanup function
 		return func() {
