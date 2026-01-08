@@ -212,7 +212,24 @@ var testNativeCredHelper = func(o *option.Option, installed bool) {
 			} else {
 				fmt.Printf("Keychain output: %s\n", string(keychainOutput))
 			}
-			command.Run(o, "rmi", testImageTag)
+
+			// Test that registry blocks unauthenticated access
+			fmt.Printf("Testing registry blocks unauthenticated access...\n")
+			command.Run(o, "rmi", testImageTag) // Remove image first
+			
+			// Test 1: Try to pull the pushed image without credentials - should fail
+			unauthPullResult := command.New(o, "pull", testImageTag).WithoutCheckingExitCode().Run()
+			fmt.Printf("Unauthenticated pull result: exit=%d, stderr=%s\n", unauthPullResult.ExitCode(), string(unauthPullResult.Err.Contents()))
+			gomega.Expect(unauthPullResult.ExitCode()).ToNot(gomega.Equal(0), "Registry should block unauthenticated pull")
+			
+			// Test 2: Try to push without credentials - should fail
+			newImageTag := fmt.Sprintf("%s/test-push-unauth:latest", registry)
+			command.Run(o, "tag", baseImage, newImageTag)
+			unauthPushResult := command.New(o, "push", newImageTag).WithoutCheckingExitCode().Run()
+			fmt.Printf("Unauthenticated push result: exit=%d, stderr=%s\n", unauthPushResult.ExitCode(), string(unauthPushResult.Err.Contents()))
+			gomega.Expect(unauthPushResult.ExitCode()).ToNot(gomega.Equal(0), "Registry should block unauthenticated push")
+			
+			fmt.Printf("SUCCESS: Registry properly blocks unauthenticated access\n")
 		})
 	})
 }
