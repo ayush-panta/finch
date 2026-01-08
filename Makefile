@@ -177,6 +177,7 @@ finch-native: finch-all
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
 	"$(MAKE)" build-credential-helper
+	"$(MAKE)" build-credential-daemon
 
 .PHONY: build-credential-helper
 build-credential-helper:
@@ -187,6 +188,13 @@ ifeq ($(GOOS),darwin)
 	mkdir -p /tmp/lima/finchhost
 	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/lima/finchhost/
 	chmod +x /tmp/lima/finchhost/docker-credential-finchhost
+endif
+
+.PHONY: build-credential-daemon
+build-credential-daemon:
+ifeq ($(GOOS),darwin)
+	# Build credential daemon for host
+	$(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/finch-cred-daemon $(PACKAGE)/cmd/finch-cred-daemon
 endif
 
 .PHONY: release

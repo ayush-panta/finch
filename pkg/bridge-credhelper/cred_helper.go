@@ -13,7 +13,7 @@ import (
 	"github.com/runfinch/finch/pkg/dependency/credhelper"
 )
 
-type dockerCredential struct {
+type DockerCredential struct {
 	ServerURL string `json:"ServerURL"`
 	Username  string `json:"Username"`
 	Secret    string `json:"Secret"`
@@ -43,7 +43,7 @@ func getDefaultHelperPath() (string, error) {
 	return exec.LookPath("docker-credential-osxkeychain")
 }
 
-func callCredentialHelper(action, serverURL, username, password string) (*dockerCredential, error) {
+func CallCredentialHelper(action, serverURL, username, password string) (*DockerCredential, error) {
 	helperPath, err := getHelperPath(serverURL)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 
 	// Set input based on action
 	if action == "store" {
-		cred := dockerCredential{
+		cred := DockerCredential{
 			ServerURL: serverURL,
 			Username:  username,
 			Secret:    password,
@@ -74,7 +74,7 @@ func callCredentialHelper(action, serverURL, username, password string) (*docker
 
 	// Parse output only for get
 	if action == "get" {
-		var creds dockerCredential
+		var creds DockerCredential
 		if err := json.Unmarshal(output, &creds); err != nil {
 			return nil, fmt.Errorf("failed to parse credential response: %w", err)
 		}
