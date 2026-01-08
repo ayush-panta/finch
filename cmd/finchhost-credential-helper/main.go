@@ -7,20 +7,31 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/docker/docker-credential-helpers/credentials"
 )
 
-// bufferSize is the buffer size for socket communication.
-const bufferSize = 4096
-
 // FinchHostCredentialHelper implements the credentials.Helper interface.
 type FinchHostCredentialHelper struct{}
+
+type CredentialRequest struct {
+	Action    string            `json:"action"`
+	ServerURL string            `json:"serverURL"`
+	Env       map[string]string `json:"env"`
+}
+
+type CredentialResponse struct {
+	ServerURL string `json:"ServerURL"`
+	Username  string `json:"Username"`
+	Secret    string `json:"Secret"`
+}
 
 // Add is not implemented for Finch credential helper.
 func (h FinchHostCredentialHelper) Add(*credentials.Credentials) error {
@@ -37,48 +48,56 @@ func (h FinchHostCredentialHelper) List() (map[string]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-// Get retrieves credentials via socket to host.
+// Get retrieves credentials via HTTP to host.
 func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error) {
 	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Get called for serverURL: %s\n", serverURL)
 
-	// macOS: Use port-forwarded path
-	credentialSocketPath := "/run/finch-user-sockets/creds.sock"
-	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Socket path: %s\n", credentialSocketPath)
+	// Collect credential-related environment variables (same as nerdctl_remote.go)
+	credentialEnvs := []string{
+		"COSIGN_PASSWORD", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
+		"AWS_SESSION_TOKEN", "AWS_ECR_DISABLE_CACHE", "AWS_ECR_CACHE_DIR", "AWS_ECR_IGNORE_CREDS_STORAGE",
+	}
 
-	conn, err := net.Dial("unix", credentialSocketPath)
+	envMap := make(map[string]string)
+	for _, key := range credentialEnvs {
+		if val := os.Getenv(key); val != "" {
+			envMap[key] = val
+		}
+	}
+	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Collected %d env vars\n", len(envMap))
+
+	req := CredentialRequest{
+		Action:    "get",
+		ServerURL: strings.TrimSpace(serverURL),
+		Env:       envMap,
+	}
+
+	reqBody, err := json.Marshal(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to connect to socket: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to marshal request: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
-	defer func() { _ = conn.Close() }()
-	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Connected to socket successfully\n")
 
-	serverURL = strings.ReplaceAll(serverURL, "\n", "")
-	serverURL = strings.ReplaceAll(serverURL, "\r", "")
+	// Create HTTP client with Unix socket transport
+	client := &http.Client{
+		Transport: &http.Transport{
+			Dial: func(_, _ string) (net.Conn, error) {
+				return net.Dial("unix", "/run/finch-user-sockets/creds.sock")
+			},
+		},
+	}
 
-	request := "get\n" + serverURL + "\n"
-	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Sending request: %s", request)
-	_, err = conn.Write([]byte(request))
+	resp, err := client.Post("http://unix/credentials", "application/json", bytes.NewReader(reqBody))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to write to socket: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to make HTTP request: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
+	defer resp.Body.Close()
+	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] HTTP response status: %s\n", resp.Status)
 
-	response := make([]byte, bufferSize)
-	n, err := conn.Read(response)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to read from socket: %v\n", err)
-		return "", "", credentials.NewErrCredentialsNotFound()
-	}
-	fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Received response (%d bytes): %s\n", n, string(response[:n]))
-
-	var cred struct {
-		ServerURL string `json:"ServerURL"`
-		Username  string `json:"Username"`
-		Secret    string `json:"Secret"`
-	}
-	if err := json.Unmarshal(response[:n], &cred); err != nil {
-		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to unmarshal response: %v\n", err)
+	var cred CredentialResponse
+	if err := json.NewDecoder(resp.Body).Decode(&cred); err != nil {
+		fmt.Fprintf(os.Stderr, "[FINCHHOST DEBUG] Failed to decode response: %v\n", err)
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 

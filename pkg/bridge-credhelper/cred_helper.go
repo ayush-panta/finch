@@ -46,6 +46,10 @@ func getDefaultHelperPath() (string, error) {
 }
 
 func CallCredentialHelper(action, serverURL, username, password string) (*DockerCredential, error) {
+	return CallCredentialHelperWithEnv(action, serverURL, username, password, nil)
+}
+
+func CallCredentialHelperWithEnv(action, serverURL, username, password string, envVars map[string]string) (*DockerCredential, error) {
 	helperPath, err := getHelperPath(serverURL)
 	if err != nil {
 		// No helper configured, try reading from config.json directly
@@ -53,6 +57,12 @@ func CallCredentialHelper(action, serverURL, username, password string) (*Docker
 	}
 
 	cmd := exec.Command(helperPath, action) //nolint:gosec // helperPath is validated by exec.LookPath
+
+	// Set environment variables
+	cmd.Env = os.Environ()
+	for key, val := range envVars {
+		cmd.Env = append(cmd.Env, key+"="+val)
+	}
 
 	// Set input based on action
 	if action == "store" {

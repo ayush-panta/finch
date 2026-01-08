@@ -4,13 +4,19 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/runfinch/finch/pkg/bridge-credhelper"
 )
+
+type CredentialRequest struct {
+	Action    string            `json:"action"`
+	ServerURL string            `json:"serverURL"`
+	Env       map[string]string `json:"env"`
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -46,43 +52,43 @@ func main() {
 		os.Exit(0)
 	}()
 	
-	// Accept connections
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Printf("Accept error: %v", err)
-			break
-		}
-		go handleConnection(conn)
-	}
+	// Create HTTP server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/credentials", handleCredentials)
+	server := &http.Server{Handler: mux}
+	
+	// Serve HTTP over Unix socket
+	server.Serve(listener)
 }
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
-	
-	// Read request
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
+func handleCredentials(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	
-	request := string(buf[:n])
-	lines := strings.Split(strings.TrimSpace(request), "\n")
-	if len(lines) < 2 || lines[0] != "get" {
+	var req CredentialRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 	
-	serverURL := lines[1]
+	log.Printf("[DAEMON DEBUG] Received request for %s with %d env vars", req.ServerURL, len(req.Env))
+	for key, val := range req.Env {
+x``		truncated := val
+		if len(val) > 20 {
+			truncated = val[:20] + "..."
+		}
+		log.Printf("[DAEMON DEBUG] Env: %s=%s", key, truncated)
+	}
 	
-	// Call the existing credential helper function directly
-	creds, err := bridgecredhelper.CallCredentialHelper("get", serverURL, "", "")
+	// Call credential helper with environment variables
+	creds, err := bridgecredhelper.CallCredentialHelperWithEnv(req.Action, req.ServerURL, "", "", req.Env)
 	if err != nil {
 		// Return empty credentials on error
-		creds = &bridgecredhelper.DockerCredential{ServerURL: serverURL}
+		creds = &bridgecredhelper.DockerCredential{ServerURL: req.ServerURL}
 	}
 	
-	// Return JSON response
-	data, _ := json.Marshal(creds)
-	conn.Write(data)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(creds)
 }
