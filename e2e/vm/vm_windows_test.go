@@ -67,14 +67,14 @@ func TestVM(t *testing.T) {
 			error parsing configuration list:unexpected end of JSON input\nFor details on the schema"
 		*/
 		// testVMPrune(o, *e2e.Installed)
-		// testVMLifecycle(o)
-		// testAdditionalDisk(o, *e2e.Installed)
-		// testFinchConfigFile(o)
-		// testVersion(o)
-		// testSupportBundle(o)
-		// testCredHelper(o, *e2e.Installed, *e2e.Registry)
-		// testSoci(o, *e2e.Installed)
-		// testMSIInstallPermission(o, *e2e.Installed)
+		testVMLifecycle(o)
+		testAdditionalDisk(o, *e2e.Installed)
+		testFinchConfigFile(o)
+		testVersion(o)
+		testSupportBundle(o)
+		testCredHelper(o, *e2e.Installed, *e2e.Registry)
+		testSoci(o, *e2e.Installed)
+		testMSIInstallPermission(o, *e2e.Installed)
 	})
 
 	gomega.RegisterFailHandler(ginkgo.Fail)

@@ -37,11 +37,47 @@ func setupCleanFinchConfig() string {
 	return configPath
 }
 
+// setupCredentialEnvironment creates a fresh credential store environment for testing
+func setupCredentialEnvironment() func() {
+	// Check for GitHub Actions environment
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
+		// Create fresh keychain for macOS CI
+		homeDir, err := os.UserHomeDir()
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+		keychainsDir := filepath.Join(homeDir, "Library", "Keychains")
+		loginKeychainPath := filepath.Join(keychainsDir, "login.keychain-db")
+		keychainPassword := "test-password"
+
+		// Remove existing keychain if present
+		exec.Command("security", "delete-keychain", loginKeychainPath).Run()
+
+		// Create Keychains directory
+		err = os.MkdirAll(keychainsDir, 0755)
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+		// Create and setup keychain
+		exec.Command("security", "create-keychain", "-p", keychainPassword, loginKeychainPath).Run()
+		exec.Command("security", "unlock-keychain", "-p", keychainPassword, loginKeychainPath).Run()
+		exec.Command("security", "list-keychains", "-s", loginKeychainPath, "/Library/Keychains/System.keychain").Run()
+		exec.Command("security", "default-keychain", "-s", loginKeychainPath).Run()
+
+		// Return cleanup function
+		return func() {
+			exec.Command("security", "delete-keychain", loginKeychainPath).Run()
+		}
+	}
+	return func() {}
+}
+
 // testNativeCredHelper tests native credential helper functionality.
 var testNativeCredHelper = func(o *option.Option, installed bool) {
 	ginkgo.Describe("Native Credential Helper", func() {
 
 		ginkgo.It("comprehensive native credential helper workflow", func() {
+			// Setup credential environment for CI
+			cleanupCredentials := setupCredentialEnvironment()
+			ginkgo.DeferCleanup(cleanupCredentials)
+
 			// Setup Phase
 			ginkgo.By("Setting up VM and registry")
 			resetVM(o)

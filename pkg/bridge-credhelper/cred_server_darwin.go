@@ -28,8 +28,11 @@ func StartCredentialServer(finchRootPath string) error {
 	
 	// Launch daemon process
 	cmd := exec.Command(daemonPath, socketPath)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	cmd.Stderr = nil  // Don't inherit stderr
+	cmd.Stdout = nil  // Don't inherit stdout
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,  // Create new process group
+	}
 	
 	err := cmd.Start()
 	if err != nil {

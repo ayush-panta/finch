@@ -75,7 +75,7 @@ func handleCredentials(w http.ResponseWriter, r *http.Request) {
 	
 	log.Printf("[DAEMON DEBUG] Received request for %s with %d env vars", req.ServerURL, len(req.Env))
 	for key, val := range req.Env {
-x``		truncated := val
+		truncated := val
 		if len(val) > 20 {
 			truncated = val[:20] + "..."
 		}
