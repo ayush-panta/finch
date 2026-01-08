@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -22,7 +21,6 @@ import (
 
 	"github.com/spf13/afero"
 
-	bridgecredhelper "github.com/runfinch/finch/pkg/bridge-credhelper"
 	"github.com/runfinch/finch/pkg/command"
 	"github.com/runfinch/finch/pkg/config"
 	"github.com/runfinch/finch/pkg/flog"
@@ -341,23 +339,17 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 	}
 
 	var additionalEnv []string
-
-	// needsCredentials set to true for commands that require remote registry access
-	needsCredentials := false
 	switch cmdName {
 	case "image":
 		if slices.Contains(args, "build") || slices.Contains(args, "pull") || slices.Contains(args, "push") {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
-			needsCredentials = true
 		}
 	case "container":
-		if slices.Contains(args, "run") || slices.Contains(args, "create") {
+		if slices.Contains(args, "run") {
 			ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
-			needsCredentials = true
 		}
-	case "build", "pull", "push", "run", "create", "container run", "container create", "image build", "image pull", "image push":
+	case "build", "pull", "push", "container run":
 		ensureRemoteCredentials(nc.fc, nc.ecc, &additionalEnv, nc.logger)
-		needsCredentials = true
 	}
 
 	// Add -E to sudo command in order to preserve existing environment variables, more info:
@@ -383,17 +375,6 @@ func (nc *nerdctlCommand) run(cmdName string, args []string) error {
 
 	if err := handleDockerCompatComposeVersion(cmdName, *nc, cmdArgs); err == nil {
 		return nil
-	}
-
-	if needsCredentials && runtime.GOOS == "darwin" {
-		execPath, err := os.Executable()
-		if err != nil {
-			return err
-		}
-		finchRootPath := filepath.Dir(filepath.Dir(execPath))
-		return bridgecredhelper.WithCredSocket(finchRootPath, func() error {
-			return nc.ncc.Create(runArgs...).Run()
-		})
 	}
 
 	return nc.ncc.Create(runArgs...).Run()
