@@ -190,11 +190,8 @@ ifeq ($(GOOS),darwin)
 	chmod +x /tmp/lima/finchhost/docker-credential-finchhost
 	# Make osxkeychain credential helper available on host PATH
 	@if [ -f $(OUTDIR)/cred-helpers/docker-credential-osxkeychain ]; then \
-		echo "Installing docker-credential-osxkeychain to /usr/local/bin"; \
-		sudo ln -sf $(CURDIR)/$(OUTDIR)/cred-helpers/docker-credential-osxkeychain /usr/local/bin/docker-credential-osxkeychain || \
-		echo "Warning: Failed to install docker-credential-osxkeychain to /usr/local/bin"; \
-	else \
-		echo "Warning: docker-credential-osxkeychain not found in $(OUTDIR)/cred-helpers/"; \
+		chmod +x $(OUTDIR)/cred-helpers/docker-credential-osxkeychain; \
+		sudo ln -sf $(OUTDIR)/cred-helpers/docker-credential-osxkeychain /usr/local/bin/docker-credential-osxkeychain; \
 	fi
 endif
 
