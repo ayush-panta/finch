@@ -188,6 +188,8 @@ ifeq ($(GOOS),darwin)
 	mkdir -p /tmp/lima/finchhost
 	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/lima/finchhost/
 	chmod +x /tmp/lima/finchhost/docker-credential-finchhost
+	# Make osxkeychain credential helper available on host PATH
+	sudo ln -sf $(OUTDIR)/cred-helpers/docker-credential-osxkeychain /usr/local/bin/docker-credential-osxkeychain
 endif
 
 .PHONY: build-credential-daemon
