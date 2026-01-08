@@ -1,205 +1,137 @@
 //go:build darwin
 
-// Package bridgecredhelper provides credential server functionality for Finch.
 package bridgecredhelper
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 )
 
-type credentialServer struct {
-	mu         sync.Mutex
-	listener   net.Listener
-	socketPath string
-	ctx        context.Context
-	cancel     context.CancelFunc
+type CredentialServer struct {
+	listener net.Listener
 }
 
-var globalCredServer = &credentialServer{}
+var server *CredentialServer
 
-// testSocketConnectivity checks if socket is responsive
-func testSocketConnectivity(socketPath string) error {
-	conn, err := net.DialTimeout("unix", socketPath, 100*time.Millisecond)
-	if err != nil {
-		return err
-	}
-	conn.Close()
-	return nil
-}
-
-// StartCredentialServer starts the credential server for VM lifecycle
 func StartCredentialServer(finchRootPath string) error {
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Starting credential server with finchRootPath: %s\n", finchRootPath)
-	globalCredServer.mu.Lock()
-	defer globalCredServer.mu.Unlock()
-
-	// Already running
-	if globalCredServer.listener != nil {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Server already running\n")
+	fmt.Fprintf(os.Stderr, "[CREDS] 1. Starting server\n")
+	if server != nil {
+		fmt.Fprintf(os.Stderr, "[CREDS] 2. Server already exists, returning\n")
 		return nil
 	}
-
+	
+	fmt.Fprintf(os.Stderr, "[CREDS] 3. Creating socket path\n")
 	socketPath := filepath.Join(finchRootPath, "lima", "data", "finch", "sock", "creds.sock")
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Creating socket at: %s\n", socketPath)
-	if err := os.MkdirAll(filepath.Dir(socketPath), 0750); err != nil {
-		return fmt.Errorf("failed to create socket directory: %w", err)
-	}
-
-	// Only remove if socket is stale (connection fails)
-	if testSocketConnectivity(socketPath) != nil {
-		_ = os.Remove(socketPath)
-	} else {
-		return fmt.Errorf("socket already in use: %s", socketPath)
-	}
-
+	os.MkdirAll(filepath.Dir(socketPath), 0750)
+	os.Remove(socketPath)
+	
+	fmt.Fprintf(os.Stderr, "[CREDS] 4. Creating listener\n")
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
-		return fmt.Errorf("failed to create credential socket: %w", err)
+		fmt.Fprintf(os.Stderr, "[CREDS] 5. Listen failed: %v\n", err)
+		return err
 	}
-
-	// Set secure permissions on socket (owner-only access)
-	if err := os.Chmod(socketPath, 0600); err != nil {
-		return fmt.Errorf("failed to set socket permissions: %w", err)
-	}
-
-	globalCredServer.listener = listener
-	globalCredServer.socketPath = socketPath
-	globalCredServer.ctx, globalCredServer.cancel = context.WithCancel(context.Background())
-
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Credential server started successfully, listening on %s\n", socketPath)
+	os.Chmod(socketPath, 0600)
+	
+	fmt.Fprintf(os.Stderr, "[CREDS] 6. Creating server struct\n")
+	server = &CredentialServer{listener: listener}
+	fmt.Fprintf(os.Stderr, "[CREDS] 7. Server struct created, server=%p\n", server)
+	
+	fmt.Fprintf(os.Stderr, "[CREDS] 8. Creating channel\n")
+	started := make(chan bool)
+	
+	fmt.Fprintf(os.Stderr, "[CREDS] 9. Starting goroutine\n")
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] handleConnections panicked: %v\n", r)
-			}
-			fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] handleConnections goroutine exiting\n")
-		}()
-		// Heartbeat to prove goroutine is alive
-		go func() {
-			for {
-				select {
-				case <-globalCredServer.ctx.Done():
-					return
-				case <-time.After(5 * time.Second):
-					fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Server heartbeat - still alive\n")
-				}
-			}
-		}()
-		globalCredServer.handleConnections()
-	}() // Accept connections in background
+		fmt.Fprintf(os.Stderr, "[CREDS] 10. Inside goroutine\n")
+		fmt.Fprintf(os.Stderr, "[CREDS] 11. Goroutine server=%p\n", server)
+		if server == nil {
+			fmt.Fprintf(os.Stderr, "[CREDS] 12. ERROR: server is nil in goroutine!\n")
+			return
+		}
+		fmt.Fprintf(os.Stderr, "[CREDS] 13. Signaling started\n")
+		started <- true
+		fmt.Fprintf(os.Stderr, "[CREDS] 14. About to call server.serve()\n")
+		server.serve()
+		fmt.Fprintf(os.Stderr, "[CREDS] 15. server.serve() returned (should never see this)\n")
+	}()
+	
+	fmt.Fprintf(os.Stderr, "[CREDS] 16. Waiting for started signal\n")
+	<-started
+	fmt.Fprintf(os.Stderr, "[CREDS] 17. Got started signal, returning\n")
 	return nil
 }
 
-// StopCredentialServer stops the credential server
-func StopCredentialServer() {
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] StopCredentialServer called\n")
-	globalCredServer.mu.Lock()
-	defer globalCredServer.mu.Unlock()
-
-	if globalCredServer.cancel != nil {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Cancelling context\n")
-		globalCredServer.cancel()
+func (s *CredentialServer) serve() {
+	fmt.Fprintf(os.Stderr, "[CREDS] 18. serve() method called, s=%p\n", s)
+	if s == nil {
+		fmt.Fprintf(os.Stderr, "[CREDS] 19. ERROR: serve() receiver is nil!\n")
+		return
 	}
-	if globalCredServer.listener != nil {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Closing listener\n")
-		_ = globalCredServer.listener.Close()
-		if globalCredServer.socketPath != "" {
-			fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Removing socket file: %s\n", globalCredServer.socketPath)
-			err := os.Remove(globalCredServer.socketPath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Failed to remove socket: %v\n", err)
-			} else {
-				fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Socket removed successfully\n")
-			}
-		}
-		globalCredServer.listener = nil
-		globalCredServer.socketPath = ""
+	if s.listener == nil {
+		fmt.Fprintf(os.Stderr, "[CREDS] 20. ERROR: listener is nil!\n")
+		return
 	}
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] StopCredentialServer completed\n")
-}
-
-func (cs *credentialServer) handleConnections() {
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Starting to handle connections\n")
+	fmt.Fprintf(os.Stderr, "[CREDS] 21. Starting Accept() loop\n")
 	for {
-		select {
-		case <-cs.ctx.Done():
-			fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Context cancelled, stopping connection handler\n")
-			return
-		default:
-			fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Context not cancelled, continuing...\n")
-		}
-
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] About to call Accept()...\n")
-		conn, err := cs.listener.Accept()
+		fmt.Fprintf(os.Stderr, "[CREDS] 22. About to call Accept()...\n")
+		
+		// Add a small delay to see if this helps with timing
+		conn, err := s.listener.Accept()
+		fmt.Fprintf(os.Stderr, "[CREDS] 22.5. Accept() returned, err=%v\n", err)
+		
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Accept failed: %v\n", err)
-			return // Socket closed
+			fmt.Fprintf(os.Stderr, "[CREDS] 23. Accept error: %v\n", err)
+			return
 		}
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Accepted connection from %s\n", conn.RemoteAddr())
-		go func(c net.Conn) {
-			defer func() { _ = c.Close() }()
-			_ = c.SetReadDeadline(time.Now().Add(10 * time.Second))
-			cs.handleRequest(c)
-		}(conn)
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Connection handled, looping back...\n")
+		fmt.Fprintf(os.Stderr, "[CREDS] 24. Got connection!\n")
+		go handle(conn)
 	}
 }
 
-func (cs *credentialServer) handleRequest(conn net.Conn) {
-	// Read the entire request in one go
-	buffer := make([]byte, 4096)
-	n, err := conn.Read(buffer)
+func StopCredentialServer() {
+	if server != nil {
+		server.listener.Close()
+		server = nil
+	}
+}
+
+
+
+func handle(conn net.Conn) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "[CREDS] PANIC in handle(): %v\n", r)
+		}
+		conn.Close()
+	}()
+	
+	buf := make([]byte, 4096)
+	n, err := conn.Read(buf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Failed to read from connection: %v\n", err)
-		_, _ = conn.Write([]byte("error: failed to read request"))
+		fmt.Fprintf(os.Stderr, "[CREDS] Read error: %v\n", err)
 		return
 	}
-
-	// Split the request by newlines
-	request := string(buffer[:n])
-	lines := strings.Split(strings.TrimSpace(request), "\n")
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Received request: %q, lines: %v\n", request, lines)
-
-	if len(lines) < 2 {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Invalid request format, expected 2 lines, got %d\n", len(lines))
-		_, _ = conn.Write([]byte("error: invalid request format"))
+	
+	req := string(buf[:n])
+	fmt.Fprintf(os.Stderr, "[CREDS] Request: %q\n", req)
+	
+	lines := strings.Split(strings.TrimSpace(req), "\n")
+	if len(lines) < 2 || lines[0] != "get" {
+		fmt.Fprintf(os.Stderr, "[CREDS] Invalid request\n")
 		return
 	}
-
-	command := strings.TrimSpace(lines[0])
-	serverURL := strings.TrimSpace(lines[1])
-
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Parsed command: %q, serverURL: %q\n", command, serverURL)
-
-	// Only handle GET operations
-	if command != "get" {
-		_, _ = conn.Write([]byte("error: only get operations supported"))
-		return
-	}
-
-	// Call credential helper to get credentials from host keychain
-	creds, err := callCredentialHelper("get", serverURL, "", "")
+	
+	creds, err := callCredentialHelper("get", lines[1], "", "")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Credential helper failed: %v\n", err)
-		// Return empty credentials if not found
-		creds = &dockerCredential{ServerURL: serverURL}
+		fmt.Fprintf(os.Stderr, "[CREDS] Credential helper error: %v\n", err)
+		creds = &dockerCredential{ServerURL: lines[1]}
 	}
-
-	// Return credentials as JSON
-	credJSON, err := json.Marshal(creds)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Failed to marshal credentials: %v\n", err)
-		_, _ = conn.Write([]byte("error: failed to marshal credentials"))
-		return
-	}
-	fmt.Fprintf(os.Stderr, "[CREDSERVER DEBUG] Returning credentials: %s\n", string(credJSON))
-	_, _ = conn.Write(credJSON)
+	
+	data, _ := json.Marshal(creds)
+	conn.Write(data)
+	fmt.Fprintf(os.Stderr, "[CREDS] Response sent\n")
 }
