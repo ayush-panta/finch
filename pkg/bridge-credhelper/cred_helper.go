@@ -3,6 +3,7 @@
 package bridgecredhelper
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -28,10 +29,11 @@ func getHelperPath(serverURL string) (string, error) {
 	finchDir := filepath.Join(homeDir, ".finch")
 
 	// Use existing credhelper package to get the right helper
-	helperName, err := credhelper.GetCredentialHelperForServer(serverURL, finchDir)
-	if err != nil {
-		// Fall back to OS default if config reading fails
-		return getDefaultHelperPath()
+	helperName, _ := credhelper.GetCredentialHelperForServer(serverURL, finchDir)
+
+	// If no helper configured, return empty (for plaintext config)
+	if helperName == "" {
+		return "", fmt.Errorf("no credential helper configured")
 	}
 
 	// Look up the binary with docker-credential- prefix
@@ -46,7 +48,8 @@ func getDefaultHelperPath() (string, error) {
 func CallCredentialHelper(action, serverURL, username, password string) (*DockerCredential, error) {
 	helperPath, err := getHelperPath(serverURL)
 	if err != nil {
-		return nil, err
+		// No helper configured, try reading from config.json directly
+		return readFromConfigFile(serverURL)
 	}
 
 	cmd := exec.Command(helperPath, action) //nolint:gosec // helperPath is validated by exec.LookPath
@@ -82,4 +85,66 @@ func CallCredentialHelper(action, serverURL, username, password string) (*Docker
 	}
 
 	return nil, nil
+}
+
+func readFromConfigFile(serverURL string) (*DockerCredential, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return &DockerCredential{ServerURL: serverURL}, nil
+	}
+	
+	configPath := filepath.Join(homeDir, ".finch", "config.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return &DockerCredential{ServerURL: serverURL}, nil
+	}
+	
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return &DockerCredential{ServerURL: serverURL}, nil
+	}
+	
+	var config map[string]interface{}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return &DockerCredential{ServerURL: serverURL}, nil
+	}
+	
+	// Check auths section for credentials
+	if auths, ok := config["auths"].(map[string]interface{}); ok {
+		if auth, ok := auths[serverURL].(map[string]interface{}); ok {
+			// Check for separate username/password fields
+			if username, ok := auth["username"].(string); ok {
+				if password, ok := auth["password"].(string); ok {
+					return &DockerCredential{
+						ServerURL: serverURL,
+						Username:  username,
+						Secret:    password,
+					}, nil
+				}
+			}
+			// Check for base64 encoded auth field
+			if authStr, ok := auth["auth"].(string); ok {
+				return decodeAuth(serverURL, authStr)
+			}
+		}
+	}
+	
+	return &DockerCredential{ServerURL: serverURL}, nil
+}
+
+func decodeAuth(serverURL, authStr string) (*DockerCredential, error) {
+	decoded, err := base64.StdEncoding.DecodeString(authStr)
+	if err != nil {
+		return &DockerCredential{ServerURL: serverURL}, nil
+	}
+	
+	parts := strings.SplitN(string(decoded), ":", 2)
+	if len(parts) != 2 {
+		return &DockerCredential{ServerURL: serverURL}, nil
+	}
+	
+	return &DockerCredential{
+		ServerURL: serverURL,
+		Username:  parts[0],
+		Secret:    parts[1],
+	}, nil
 }
