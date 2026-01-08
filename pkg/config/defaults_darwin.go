@@ -75,5 +75,6 @@ func applyDefaults(
 	}
 	vmDefault(cfg, supportsVz)
 	rosettaDefault(cfg)
+
 	return cfg
 }

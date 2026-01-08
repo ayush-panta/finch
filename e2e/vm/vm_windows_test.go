@@ -37,12 +37,6 @@ func TestVM(t *testing.T) {
 	// Test Stopped -> Nonexistent
 	// Test Nonexistent -> Running
 	ginkgo.SynchronizedBeforeSuite(func() []byte {
-		// Set DOCKER_CONFIG to point to %LOCALAPPDATA%\.finch for credential helper tests
-		finchRootDir := os.Getenv("LOCALAPPDATA")
-		gomega.Expect(finchRootDir).ShouldNot(gomega.BeEmpty())
-		finchConfigDir := filepath.Join(finchRootDir, ".finch")
-		os.Setenv("DOCKER_CONFIG", finchConfigDir)
-
 		resetDisks(o, *e2e.Installed)
 		command.New(o, "vm", "stop", "-f").WithoutCheckingExitCode().WithTimeoutInSeconds(30).Run()
 		time.Sleep(1 * time.Second)

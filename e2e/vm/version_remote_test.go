@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	nerdctlVersion    = "v2.2.1"
-	buildKitVersion   = "v0.26.3"
-	containerdVersion = "v2.2.1"
+	nerdctlVersion    = "v2.1.3"
+	buildKitVersion   = "v0.23.2"
+	containerdVersion = "v2.1.3"
 	runcVersion       = "1.3.3"
 )
 
