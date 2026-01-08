@@ -79,7 +79,7 @@ endif
 
 FINCH_CORE_DIR := $(CURDIR)/deps/finch-core
 
-remote-all: arch-test finch install.finch-core-dependencies finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
+remote-all: arch-test install.finch-core-dependencies finch finch.yaml networks.yaml config.yaml $(OUTDIR)/finch-daemon/finch@.service
 
 ifeq ($(BUILD_OS), Windows_NT)
 include Makefile.windows
@@ -176,6 +176,31 @@ finch-native: finch-all
 
 finch-all:
 	$(GO) build -ldflags $(LDFLAGS) -tags "$(GO_BUILD_TAGS)" -o $(OUTDIR)/bin/$(BINARYNAME) $(PACKAGE)/cmd/finch
+	"$(MAKE)" build-credential-helper
+	"$(MAKE)" build-credential-daemon
+
+.PHONY: build-credential-helper
+build-credential-helper:
+ifeq ($(GOOS),darwin)
+	# Build finchhost credential helper for VM
+	GOOS=linux GOARCH=$(shell go env GOARCH) $(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/docker-credential-finchhost $(PACKAGE)/cmd/finchhost-credential-helper
+	# Copy to /tmp/lima which is mounted in macOS VM
+	mkdir -p /tmp/lima/finchhost
+	cp $(OUTDIR)/bin/docker-credential-finchhost /tmp/lima/finchhost/
+	chmod +x /tmp/lima/finchhost/docker-credential-finchhost
+	# Make osxkeychain credential helper available on host PATH
+	@if [ -f $(OUTDIR)/cred-helpers/docker-credential-osxkeychain ]; then \
+		chmod +x $(OUTDIR)/cred-helpers/docker-credential-osxkeychain; \
+		sudo ln -sf $(OUTDIR)/cred-helpers/docker-credential-osxkeychain /usr/local/bin/docker-credential-osxkeychain; \
+	fi
+endif
+
+.PHONY: build-credential-daemon
+build-credential-daemon:
+ifeq ($(GOOS),darwin)
+	# Build credential daemon for host
+	$(GO) build -ldflags $(LDFLAGS) -o $(OUTDIR)/bin/finch-cred-daemon $(PACKAGE)/cmd/finch-cred-daemon
+endif
 
 .PHONY: release
 release: check-licenses all download-licenses

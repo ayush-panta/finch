@@ -23,6 +23,7 @@ func makeConfig(vmType limayaml.VMType, memory string, cpus int, rosetta bool) *
 	fc.Memory = pointer.String(memory)
 	fc.CPUs = pointer.Int(cpus)
 	fc.Rosetta = pointer.Bool(rosetta)
+	fc.CredsHelpers = []string{"osxkeychain"}
 	return &fc
 }
 

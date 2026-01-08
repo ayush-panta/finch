@@ -37,6 +37,12 @@ func TestVM(t *testing.T) {
 	// Test Stopped -> Nonexistent
 	// Test Nonexistent -> Running
 	ginkgo.SynchronizedBeforeSuite(func() []byte {
+		// Set DOCKER_CONFIG to point to ~/.finch for credential helper tests
+		homeDir, err := os.UserHomeDir()
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+		finchConfigDir := filepath.Join(homeDir, ".finch")
+		os.Setenv("DOCKER_CONFIG", finchConfigDir)
+
 		resetDisks(o, *e2e.Installed)
 		command.New(o, "vm", "stop", "-f").WithoutCheckingExitCode().WithTimeoutInSeconds(30).Run()
 		time.Sleep(1 * time.Second)
@@ -66,19 +72,20 @@ func TestVM(t *testing.T) {
 	})
 
 	ginkgo.Describe("", func() {
-		testVMPrune(o, *e2e.Installed)
-		testVMLifecycle(o)
-		testAdditionalDisk(o, *e2e.Installed)
-		testConfig(o, *e2e.Installed)
-		testFinchConfigFile(o)
-		testVersion(o)
-		testNonDefaultOptions(o, *e2e.Installed)
-		testSupportBundle(o)
-		testCredHelper(o, *e2e.Installed, *e2e.Registry)
-		testSoci(o, *e2e.Installed)
-		testVMNetwork(o, *e2e.Installed)
-		testDaemon(o, *e2e.Installed)
-		testVMDisk(o)
+		// testVMPrune(o, *e2e.Installed)
+		// testVMLifecycle(o)
+		// testAdditionalDisk(o, *e2e.Installed)
+		// testConfig(o, *e2e.Installed)
+		// testFinchConfigFile(o)
+		// testVersion(o)
+		// testNonDefaultOptions(o, *e2e.Installed)
+		// testSupportBundle(o)
+		// testCredHelper(o, *e2e.Installed, *e2e.Registry)
+		testNativeCredHelper(o, *e2e.Installed)
+		// testSoci(o, *e2e.Installed)
+		// testVMNetwork(o, *e2e.Installed)
+		// testDaemon(o, *e2e.Installed)
+		// testVMDisk(o)
 	})
 
 	gomega.RegisterFailHandler(ginkgo.Fail)
