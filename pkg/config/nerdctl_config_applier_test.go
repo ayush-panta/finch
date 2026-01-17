@@ -66,8 +66,8 @@ func Test_updateEnvironment(t *testing.T) {
 					string(`
 FINCH_DIR=/finch/dir
 AWS_DIR=/home/dir/.aws
-mkdir -p "finch-vm-config"
-export DOCKER_CONFIG="finch-vm-config"
+mkdir -p "$HOME/.finch-vm-config"
+export DOCKER_CONFIG="$HOME/.finch-vm-config"
 echo '{"credsStore": "finchhost"}' > "$DOCKER_CONFIG/config.json"
 [ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws
 [ -L /home/mock_user.linux/.finch ] || ln -s $FINCH_DIR /home/mock_user.linux/.finch`), string(fileBytes))
@@ -112,8 +112,8 @@ AWS_DIR=/home/dir/.aws
 export DOCKER_CONFIG="$FINCH_DIR"
 [ -L /root/.aws ] || sudo ln -fs "$AWS_DIR" /root/.aws)
 [ -L /home/mock_user.linux/.finch ] || ln -s $FINCH_DIR /home/mock_user.linux/.finch
-mkdir -p "finch-vm-config"
-export DOCKER_CONFIG="finch-vm-config"
+mkdir -p "$HOME/.finch-vm-config"
+export DOCKER_CONFIG="$HOME/.finch-vm-config"
 echo '{"credsStore": "finchhost"}' > "$DOCKER_CONFIG/config.json"`), string(fileBytes))
 			},
 			want: nil,
