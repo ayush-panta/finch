@@ -140,6 +140,73 @@ func TestHandleCredentials(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
+
+	t.Run("returns 405 for DELETE request", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/credentials", nil)
+		w := httptest.NewRecorder()
+
+		handleCredentials(w, req)
+
+		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	})
+
+	t.Run("returns 405 for PATCH request", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPatch, "/credentials", nil)
+		w := httptest.NewRecorder()
+
+		handleCredentials(w, req)
+
+		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	})
+
+	t.Run("handles nil Env field", func(t *testing.T) {
+		reqBody := CredentialRequest{
+			ServerURL: "registry.example.com",
+			Env:       nil,
+		}
+		jsonData, _ := json.Marshal(reqBody)
+		req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewBuffer(jsonData))
+		w := httptest.NewRecorder()
+
+		handleCredentials(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("handles empty request body", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewBuffer([]byte{}))
+		w := httptest.NewRecorder()
+
+		handleCredentials(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("handles concurrent requests", func(t *testing.T) {
+		const numRequests = 10
+		done := make(chan bool, numRequests)
+
+		for i := 0; i < numRequests; i++ {
+			go func(id int) {
+				reqBody := CredentialRequest{
+					ServerURL: "registry.example.com",
+					Env:       map[string]string{"ID": string(rune('0' + id))},
+				}
+				jsonData, _ := json.Marshal(reqBody)
+				req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewBuffer(jsonData))
+				w := httptest.NewRecorder()
+
+				handleCredentials(w, req)
+
+				assert.Equal(t, http.StatusOK, w.Code)
+				done <- true
+			}(i)
+		}
+
+		for i := 0; i < numRequests; i++ {
+			<-done
+		}
+	})
 }
 
 func TestCredentialRequest(t *testing.T) {

@@ -32,7 +32,7 @@ func main() {
 	}
 	socketPath := os.Args[1]
 
-	// Pre-emptive socket removal as safe measure
+	// Pre-emptive socket removal
 	_ = os.Remove(socketPath)
 
 	// Create listener and socket
@@ -41,13 +41,14 @@ func main() {
 		log.Fatalf("Failed to create socket: %v", err)
 	}
 
-	// Set permissions immediately
+	// Set owning user read/write permissions on socket
 	if err := os.Chmod(socketPath, 0o600); err != nil {
 		_ = listener.Close()
 		_ = os.Remove(socketPath)
 		log.Fatalf("Failed to set socket permissions: %v", err)
 	}
 
+	// Handle normal function shutdown
 	defer func() {
 		_ = listener.Close()
 		_ = os.Remove(socketPath)
@@ -64,7 +65,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// Create HTTP server
+	// Create HTTP server to handle credential requests
 	mux := http.NewServeMux()
 	mux.HandleFunc("/credentials", handleCredentials)
 	server := &http.Server{
@@ -78,29 +79,32 @@ func main() {
 	}
 }
 
-// Gets credential using configuration in ~/.finch/config.json.
 func handleCredentials(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
+	// Decodes the JSON credential request
 	var req CredentialRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
+	// Enforces non-empty request
 	if req.ServerURL == "" {
 		http.Error(w, "ServerURL is required", http.StatusBadRequest)
 		return
 	}
 
+	// Retrieve credentials, returning minimal credential object on error
 	creds, err := credserver.GetCredentials(req.ServerURL, req.Env)
 	if err != nil {
 		creds = &credentials.Credentials{ServerURL: req.ServerURL}
 	}
 
+	// Encode response as appropriate JSON response
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(creds); err != nil {
 		log.Printf("Failed to encode credentials response: %v", err)
