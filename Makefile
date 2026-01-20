@@ -356,7 +356,7 @@ test-e2e-container: create-report-dir add-credhelper-to-path ensure-plaintext-co
 	go test -ldflags $(LDFLAGS) -timeout 2h ./e2e/container -test.v -ginkgo.v -ginkgo.timeout=2h -ginkgo.flake-attempts=3 -ginkgo.json-report=$(REPORT_DIR)/$(RUN_ID)-$(RUN_ATTEMPT)-e2e-container-report.json --installed="$(INSTALLED)"
 
 .PHONY: test-e2e-vm
-test-e2e-vm: create-report-dir
+test-e2e-vm: create-report-dir ensure-plaintext-config
 	go test -ldflags $(LDFLAGS) -timeout 2h ./e2e/vm -test.v -ginkgo.v -ginkgo.timeout=2h -ginkgo.flake-attempts=3 -ginkgo.json-report=$(REPORT_DIR)/$(RUN_ID)-$(RUN_ATTEMPT)-e2e-vm-report.json --installed="$(INSTALLED)" --registry="$(REGISTRY)"
 
 GINKGO = go run github.com/onsi/ginkgo/v2/ginkgo
