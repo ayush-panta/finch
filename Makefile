@@ -227,7 +227,7 @@ coverage:
 download-licenses: GOBIN = $(CURDIR)/tools_bin
 download-licenses:
 	GOBIN=$(GOBIN) go install github.com/google/go-licenses
-	$(GOBIN)/go-licenses save ./... --save_path="$(LICENSEDIR)" --force --include_tests
+	$(GOBIN)/go-licenses save ./... --save_path="$(LICENSEDIR)" --force --include_tests --ignore github.com/multiformats/go-base36 --ignore github.com/spf13/afero/sftpfs
 
     ### dependencies in tools.go - start ###
 
@@ -239,6 +239,7 @@ download-licenses:
 	curl https://raw.githubusercontent.com/google/go-licenses/master/LICENSE --output "$(LICENSEDIR)/github.com/google/go-licenses/LICENSE"
     # for golang.org/x/tools/cmd/stringer
 	mkdir -p "$(LICENSEDIR)/golang.org/x/tools"
+	chmod -R u+w "$(LICENSEDIR)/golang.org/x/tools" 2>/dev/null || true
 	curl https://raw.githubusercontent.com/golang/tools/master/LICENSE --output "$(LICENSEDIR)/golang.org/x/tools/LICENSE"
 
     ### dependencies in tools.go - end ###
