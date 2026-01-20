@@ -3,7 +3,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// Package main implements docker-credential-finchhost
+// Package main implements docker-credential-finchhost, the standardized credhelper in the VM (only on macOS for now).
 package main
 
 import (
@@ -54,13 +54,16 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 		}
 	}
 
-	// Create request with JSON body.
+	// Create HTTP request with JSON body.
 	reqBody := struct {
 		ServerURL string            `json:"serverURL"`
 		Env       map[string]string `json:"env"`
 	}{ServerURL: strings.TrimSpace(serverURL), Env: envMap}
 	jsonData, _ := json.Marshal(reqBody)
+	req, _ := http.NewRequest(http.MethodPost, "http://unix/credentials", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")
 
+	// Create client that interfaces with UNIX socket.
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
@@ -69,24 +72,25 @@ func (h FinchHostCredentialHelper) Get(serverURL string) (string, string, error)
 		},
 	}
 
-	req, _ := http.NewRequest(http.MethodPost, "http://unix/credentials", bytes.NewBuffer(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-
+	// Send data through UNIX connection via client.
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// Ensure response status is valid.
 	if resp.StatusCode != http.StatusOK {
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
+	// Read response body into raw data.
 	responseBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", "", credentials.NewErrCredentialsNotFound()
 	}
 
+	// Unmarshal raw data into credentials object.
 	var cred credentials.Credentials
 	if err := json.Unmarshal(responseBytes, &cred); err != nil {
 		return "", "", credentials.NewErrCredentialsNotFound()

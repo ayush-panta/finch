@@ -16,48 +16,48 @@ import (
 func TestGetSocketPath(t *testing.T) {
 	t.Run("uses os.Getuid() when SUDO_UID not set", func(t *testing.T) {
 		os.Unsetenv("SUDO_UID")
-		
+
 		path := getSocketPath()
 		uid := os.Getuid()
 		expected := fmt.Sprintf("/run/user/%d/finch-creds.sock", uid)
-		
+
 		assert.Equal(t, expected, path)
 	})
 
 	t.Run("uses SUDO_UID when set", func(t *testing.T) {
 		t.Setenv("SUDO_UID", "1000")
-		
+
 		path := getSocketPath()
 		expected := "/run/user/1000/finch-creds.sock"
-		
+
 		assert.Equal(t, expected, path)
 	})
 
 	t.Run("handles invalid SUDO_UID (non-numeric)", func(t *testing.T) {
 		t.Setenv("SUDO_UID", "invalid")
-		
+
 		path := getSocketPath()
 		uid := os.Getuid()
 		expected := fmt.Sprintf("/run/user/%d/finch-creds.sock", uid)
-		
+
 		assert.Equal(t, expected, path)
 	})
 
 	t.Run("handles SUDO_UID with whitespace", func(t *testing.T) {
 		t.Setenv("SUDO_UID", "  1000  ")
-		
+
 		path := getSocketPath()
 		expected := "/run/user/1000/finch-creds.sock"
-		
+
 		assert.Equal(t, expected, path)
 	})
 
 	t.Run("handles UID 0 (root)", func(t *testing.T) {
 		t.Setenv("SUDO_UID", "0")
-		
+
 		path := getSocketPath()
 		expected := "/run/user/0/finch-creds.sock"
-		
+
 		assert.Equal(t, expected, path)
 	})
 }
@@ -66,7 +66,7 @@ func TestFinchHostCredentialHelper_Add(t *testing.T) {
 	t.Run("returns not implemented error", func(t *testing.T) {
 		helper := FinchHostCredentialHelper{}
 		err := helper.Add(nil)
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not implemented")
 	})
@@ -76,7 +76,7 @@ func TestFinchHostCredentialHelper_Delete(t *testing.T) {
 	t.Run("returns not implemented error", func(t *testing.T) {
 		helper := FinchHostCredentialHelper{}
 		err := helper.Delete("")
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not implemented")
 	})
@@ -86,7 +86,7 @@ func TestFinchHostCredentialHelper_List(t *testing.T) {
 	t.Run("returns not implemented error", func(t *testing.T) {
 		helper := FinchHostCredentialHelper{}
 		result, err := helper.List()
-		
+
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "not implemented")
