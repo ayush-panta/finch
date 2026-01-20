@@ -7,10 +7,12 @@ package credserver
 
 import "github.com/docker/docker-credential-helpers/credentials"
 
-func GetCredentials(registryHostname string, envVars ...map[string]string) (*credentials.Credentials, error) {
+// GetCredentials is a stub on Linux that returns empty credentials.
+func GetCredentials(registryHostname string, _ ...map[string]string) (*credentials.Credentials, error) {
 	return &credentials.Credentials{ServerURL: registryHostname}, nil
 }
 
-func EnsureConfigExists(finchPath string) error {
+// EnsureConfigExists is a no-op on Linux.
+func EnsureConfigExists(_ string) error {
 	return nil
 }

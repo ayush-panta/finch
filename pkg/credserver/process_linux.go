@@ -3,14 +3,15 @@
 
 //go:build linux
 
+// Package credserver provides Linux stubs for credential server operations.
 package credserver
 
-// StartCredentialServer is not implemented on Linux.
-func StartCredentialServer(finchRootPath string) error {
+// StartCredentialServer is a no-op on Linux.
+func StartCredentialServer(_ string) error {
 	return nil
 }
 
-// StopCredentialServer is not implemented on Linux.
-func StopCredentialServer(finchRootPath string) error {
+// StopCredentialServer is a no-op on Linux.
+func StopCredentialServer(_ string) error {
 	return nil
 }

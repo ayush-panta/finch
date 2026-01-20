@@ -19,17 +19,21 @@ import (
 
 // GetCredentials retrieves credentials from configured helper or auths in config. Returns empty credentials if not found.
 func GetCredentials(registryHostname string, envVars ...map[string]string) (*credentials.Credentials, error) {
+	// Load snapshot of config file.
 	cfg, err := loadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Determine helper required for registryHostname.
 	helperPath := getCredHelperPath(registryHostname, cfg)
 
+	// If helper is not found, defer to searching the plaintext credstore.
 	if helperPath == "" {
 		return readCredentialsFromConfig(registryHostname, cfg), nil
 	}
 
+	// Build the GET command to helper with added environment variables.
 	// #nosec G204 -- helperPath is from config file credential helper, not direct user input
 	cmd := exec.Command(helperPath, "get")
 	cmd.Env = os.Environ()
@@ -39,17 +43,18 @@ func GetCredentials(registryHostname string, envVars ...map[string]string) (*cre
 		}
 	}
 
+	// Send request to the helper via stdin.
 	cmd.Stdin = strings.NewReader(registryHostname)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("credential helper failed: %w - %s", err, string(output))
 	}
 
+	// Parse response from helper and return credential struct.
 	var creds credentials.Credentials
 	if err := json.Unmarshal(output, &creds); err != nil {
 		return nil, fmt.Errorf("failed to parse credential response: %w", err)
 	}
-
 	return &creds, nil
 }
 
@@ -60,6 +65,7 @@ func EnsureConfigExists(finchPath string) error {
 		return fmt.Errorf("failed to create finch directory: %w", err)
 	}
 
+	// If config already exists, immediately return.
 	cfgPath := filepath.Join(finchPath, "config.json")
 	if _, err := os.Stat(cfgPath); err == nil {
 		return nil
@@ -67,16 +73,17 @@ func EnsureConfigExists(finchPath string) error {
 		return fmt.Errorf("failed to check config file: %w", err)
 	}
 
+	// Check if osxkeychain is available; if so, set as store.
 	var cfg configfile.ConfigFile
 	if isOSXKeychainUsable() {
 		cfg.CredentialsStore = "osxkeychain"
 	}
 
+	// Create config file with JSON structure.
 	data, err := json.MarshalIndent(&cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(cfgPath, data, 0o644)
 }
 
@@ -86,14 +93,12 @@ func loadConfig() (*configfile.ConfigFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
-
 	finchPath := filepath.Join(homeDir, ".finch")
 	cfgPath := filepath.Join(finchPath, "config.json")
 
 	cfg := configfile.New(cfgPath)
 	file, err := os.Open(cfg.Filename)
 	if err != nil {
-		// If config doesn't exist, return empty config (plaintext storage)
 		if os.IsNotExist(err) {
 			return &configfile.ConfigFile{}, nil
 		}
@@ -104,11 +109,10 @@ func loadConfig() (*configfile.ConfigFile, error) {
 	if err := cfg.LoadFromReader(file); err != nil {
 		return nil, err
 	}
-
 	return cfg, nil
 }
 
-// Determines credential helper path from credHelpers or credsStore. Returns empty string to signal plaintext fallback.
+// getCredHelperPath determines credential helper path from credHelpers or credsStore. Returns empty string to signal plaintext fallback.
 func getCredHelperPath(registryHostname string, cfg *configfile.ConfigFile) string {
 	if cfg == nil {
 		return ""
@@ -137,7 +141,7 @@ func getCredHelperPath(registryHostname string, cfg *configfile.ConfigFile) stri
 	return ""
 }
 
-// Reads credentials from auths section. Returns empty credentials with only ServerURL if not found.
+// readCredentialsFromConfig reads credentials from auths section. Returns empty credentials with only ServerURL if not found.
 func readCredentialsFromConfig(registryHostname string, cfg *configfile.ConfigFile) *credentials.Credentials {
 	if cfg == nil || cfg.AuthConfigs == nil {
 		return &credentials.Credentials{ServerURL: registryHostname}
