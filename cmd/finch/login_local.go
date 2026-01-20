@@ -56,8 +56,10 @@ func newLoginLocalCommand() *cobra.Command {
 }
 
 func loginOptions(cmd *cobra.Command) (types.LoginCommandOptions, error) {
-	// Simple global options without importing nerdctl/helpers (causing go mod error)
-	globalOptions := types.GlobalCommandOptions{}
+	namespace, _ := cmd.Flags().GetString("namespace")
+	globalOptions := types.GlobalCommandOptions{
+		Namespace: namespace,
+	}
 
 	username, err := cmd.Flags().GetString("username")
 	if err != nil {

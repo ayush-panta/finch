@@ -78,6 +78,7 @@ func main() {
 	}
 }
 
+// Gets credential using configuration in ~/.finch/config.json.
 func handleCredentials(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
