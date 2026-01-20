@@ -25,6 +25,24 @@ import (
 var testFinchConfigFile = func(o *option.Option) {
 	ginkgo.Describe("finch config file", func() {
 		ginkgo.It("should store login credentials", func() {
+			// Ensure clean config at start
+			var finchRootDir string
+			var err error
+			if runtime.GOOS == "windows" {
+				finchRootDir = os.Getenv("LOCALAPPDATA")
+			} else {
+				finchRootDir, err = os.UserHomeDir()
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			}
+			configPath := filepath.Join(finchRootDir, ".finch", "config.json")
+			_ = os.Remove(configPath)
+			// Create empty config to prevent automatic osxkeychain setup
+			err = os.MkdirAll(filepath.Dir(configPath), 0o750)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			err = os.WriteFile(configPath, []byte("{}"), 0o600)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			ginkgo.DeferCleanup(os.Remove, configPath)
+
 			filename := "htpasswd"
 			registryImage := "public.ecr.aws/docker/library/registry:2"
 			registryContainer := "auth-registry"
@@ -49,23 +67,18 @@ var testFinchConfigFile = func(o *option.Option) {
 				registryImage)
 			ginkgo.DeferCleanup(command.Run, o, "rmi", "-f", registryImage)
 			ginkgo.DeferCleanup(command.Run, o, "rm", "-f", registryContainer)
+			tries := 0
 			for command.StdoutStr(o, "inspect", "-f", "{{.State.Running}}", containerID) != "true" {
+				if tries >= 5 {
+					ginkgo.Fail("Registry container failed to start after 5 seconds")
+				}
 				time.Sleep(1 * time.Second)
+				tries++
 			}
 			time.Sleep(10 * time.Second)
 			registry := fmt.Sprintf(`localhost:%d`, port)
 			command.Run(o, "login", registry, "-u", "testUser", "-p", "testPassword")
 
-			var finchRootDir string
-			var err error
-			if runtime.GOOS == "windows" {
-				finchRootDir = os.Getenv("LOCALAPPDATA")
-			} else {
-				finchRootDir, err = os.UserHomeDir()
-				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			}
-
-			configPath := filepath.Join(finchRootDir, ".finch", "config.json")
 			configContent, err := os.ReadFile(filepath.Clean(configPath))
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
