@@ -14,8 +14,10 @@ import (
 )
 
 func TestGetSocketPath(t *testing.T) {
+	t.Parallel()
 	t.Run("uses os.Getuid() when SUDO_UID not set", func(t *testing.T) {
-		os.Unsetenv("SUDO_UID")
+		t.Parallel()
+		_ = os.Unsetenv("SUDO_UID")
 
 		path := getSocketPath()
 		uid := os.Getuid()
@@ -25,6 +27,7 @@ func TestGetSocketPath(t *testing.T) {
 	})
 
 	t.Run("uses SUDO_UID when set", func(t *testing.T) {
+		t.Parallel()
 		t.Setenv("SUDO_UID", "1000")
 
 		path := getSocketPath()
@@ -34,6 +37,7 @@ func TestGetSocketPath(t *testing.T) {
 	})
 
 	t.Run("handles invalid SUDO_UID (non-numeric)", func(t *testing.T) {
+		t.Parallel()
 		t.Setenv("SUDO_UID", "invalid")
 
 		path := getSocketPath()
@@ -44,6 +48,7 @@ func TestGetSocketPath(t *testing.T) {
 	})
 
 	t.Run("handles SUDO_UID with whitespace", func(t *testing.T) {
+		t.Parallel()
 		t.Setenv("SUDO_UID", "  1000  ")
 
 		path := getSocketPath()
@@ -53,6 +58,7 @@ func TestGetSocketPath(t *testing.T) {
 	})
 
 	t.Run("handles UID 0 (root)", func(t *testing.T) {
+		t.Parallel()
 		t.Setenv("SUDO_UID", "0")
 
 		path := getSocketPath()
@@ -63,7 +69,9 @@ func TestGetSocketPath(t *testing.T) {
 }
 
 func TestFinchHostCredentialHelper_Add(t *testing.T) {
+	t.Parallel()
 	t.Run("returns not implemented error", func(t *testing.T) {
+		t.Parallel()
 		helper := FinchHostCredentialHelper{}
 		err := helper.Add(nil)
 
@@ -73,7 +81,9 @@ func TestFinchHostCredentialHelper_Add(t *testing.T) {
 }
 
 func TestFinchHostCredentialHelper_Delete(t *testing.T) {
+	t.Parallel()
 	t.Run("returns not implemented error", func(t *testing.T) {
+		t.Parallel()
 		helper := FinchHostCredentialHelper{}
 		err := helper.Delete("")
 
@@ -83,7 +93,9 @@ func TestFinchHostCredentialHelper_Delete(t *testing.T) {
 }
 
 func TestFinchHostCredentialHelper_List(t *testing.T) {
+	t.Parallel()
 	t.Run("returns not implemented error", func(t *testing.T) {
+		t.Parallel()
 		helper := FinchHostCredentialHelper{}
 		result, err := helper.List()
 
@@ -94,7 +106,9 @@ func TestFinchHostCredentialHelper_List(t *testing.T) {
 }
 
 func TestCredentialEnvs(t *testing.T) {
+	t.Parallel()
 	t.Run("contains expected environment variables", func(t *testing.T) {
+		t.Parallel()
 		expectedVars := []string{
 			"COSIGN_PASSWORD",
 			"AWS_ACCESS_KEY_ID",
@@ -111,6 +125,7 @@ func TestCredentialEnvs(t *testing.T) {
 	})
 
 	t.Run("has correct number of environment variables", func(t *testing.T) {
+		t.Parallel()
 		assert.Len(t, credentialEnvs, 7)
 	})
 }

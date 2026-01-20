@@ -18,20 +18,23 @@ import (
 )
 
 func TestEnsureConfigExists(t *testing.T) {
+	t.Parallel()
 	t.Run("creates config with osxkeychain when helper exists", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
-		
+
 		err := EnsureConfigExists(tmpDir)
 		require.NoError(t, err)
 
 		configPath := filepath.Join(tmpDir, "config.json")
+		//nolint:gosec // Test file path is safe
 		data, err := os.ReadFile(configPath)
 		require.NoError(t, err)
 
 		var cfg configfile.ConfigFile
 		err = json.Unmarshal(data, &cfg)
 		require.NoError(t, err)
-		
+
 		// Should have osxkeychain if available on system
 		if isOSXKeychainUsable() {
 			assert.Equal(t, "osxkeychain", cfg.CredentialsStore)
@@ -39,9 +42,10 @@ func TestEnsureConfigExists(t *testing.T) {
 	})
 
 	t.Run("skips when config already exists", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.json")
-		
+
 		existingConfig := `{"credsStore":"test"}`
 		err := os.WriteFile(configPath, []byte(existingConfig), 0o644)
 		require.NoError(t, err)
@@ -49,12 +53,14 @@ func TestEnsureConfigExists(t *testing.T) {
 		err = EnsureConfigExists(tmpDir)
 		require.NoError(t, err)
 
+		//nolint:gosec // Test file path is safe
 		data, err := os.ReadFile(configPath)
 		require.NoError(t, err)
 		assert.Equal(t, existingConfig, string(data))
 	})
 
 	t.Run("creates directory if missing", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
 		finchDir := filepath.Join(tmpDir, "nested", "finch")
 
@@ -68,10 +74,12 @@ func TestEnsureConfigExists(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
+	t.Parallel()
 	t.Run("loads valid config with credsStore", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ".finch", "config.json")
-		err := os.MkdirAll(filepath.Dir(configPath), 0o755)
+		err := os.MkdirAll(filepath.Dir(configPath), 0o750)
 		require.NoError(t, err)
 
 		configData := `{"credsStore":"osxkeychain"}`
@@ -80,8 +88,8 @@ func TestLoadConfig(t *testing.T) {
 
 		// Mock home dir
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tmpDir)
-		defer os.Setenv("HOME", originalHome)
+		_ = os.Setenv("HOME", tmpDir)
+		defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 		cfg, err := loadConfig()
 		require.NoError(t, err)
@@ -89,11 +97,12 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("returns empty config when file missing", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
-		
+
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tmpDir)
-		defer os.Setenv("HOME", originalHome)
+		_ = os.Setenv("HOME", tmpDir)
+		defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 		cfg, err := loadConfig()
 		require.NoError(t, err)
@@ -102,17 +111,18 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("returns error on malformed JSON", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ".finch", "config.json")
-		err := os.MkdirAll(filepath.Dir(configPath), 0o755)
+		err := os.MkdirAll(filepath.Dir(configPath), 0o750)
 		require.NoError(t, err)
 
 		err = os.WriteFile(configPath, []byte(`{invalid json`), 0o644)
 		require.NoError(t, err)
 
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tmpDir)
-		defer os.Setenv("HOME", originalHome)
+		_ = os.Setenv("HOME", tmpDir)
+		defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 		_, err = loadConfig()
 		assert.Error(t, err)
@@ -120,7 +130,9 @@ func TestLoadConfig(t *testing.T) {
 }
 
 func TestGetCredHelperPath(t *testing.T) {
+	t.Parallel()
 	t.Run("returns registry-specific helper from credHelpers", func(t *testing.T) {
+		t.Parallel()
 		cfg := &configfile.ConfigFile{
 			CredentialHelpers: map[string]string{
 				"registry.example.com": "ecr-login",
@@ -134,6 +146,7 @@ func TestGetCredHelperPath(t *testing.T) {
 	})
 
 	t.Run("falls back to credsStore when registry not in credHelpers", func(t *testing.T) {
+		t.Parallel()
 		cfg := &configfile.ConfigFile{
 			CredentialsStore: "osxkeychain",
 			CredentialHelpers: map[string]string{
@@ -146,6 +159,7 @@ func TestGetCredHelperPath(t *testing.T) {
 	})
 
 	t.Run("returns empty when no helper configured", func(t *testing.T) {
+		t.Parallel()
 		cfg := &configfile.ConfigFile{}
 
 		path := getCredHelperPath("registry.example.com", cfg)
@@ -153,13 +167,16 @@ func TestGetCredHelperPath(t *testing.T) {
 	})
 
 	t.Run("handles nil config", func(t *testing.T) {
+		t.Parallel()
 		path := getCredHelperPath("registry.example.com", nil)
 		assert.Empty(t, path)
 	})
 }
 
 func TestReadCredentialsFromConfig(t *testing.T) {
+	t.Parallel()
 	t.Run("reads username and password from auths", func(t *testing.T) {
+		t.Parallel()
 		cfg := &configfile.ConfigFile{
 			AuthConfigs: map[string]types.AuthConfig{
 				"registry.example.com": {
@@ -176,6 +193,7 @@ func TestReadCredentialsFromConfig(t *testing.T) {
 	})
 
 	t.Run("returns empty creds when registry not found", func(t *testing.T) {
+		t.Parallel()
 		cfg := &configfile.ConfigFile{
 			AuthConfigs: map[string]types.AuthConfig{},
 		}
@@ -187,12 +205,14 @@ func TestReadCredentialsFromConfig(t *testing.T) {
 	})
 
 	t.Run("handles nil config", func(t *testing.T) {
+		t.Parallel()
 		creds := readCredentialsFromConfig("registry.example.com", nil)
 		assert.Equal(t, "registry.example.com", creds.ServerURL)
 		assert.Empty(t, creds.Username)
 	})
 
 	t.Run("handles nil AuthConfigs map", func(t *testing.T) {
+		t.Parallel()
 		cfg := &configfile.ConfigFile{}
 
 		creds := readCredentialsFromConfig("registry.example.com", cfg)
@@ -202,7 +222,9 @@ func TestReadCredentialsFromConfig(t *testing.T) {
 }
 
 func TestIsOSXKeychainUsable(t *testing.T) {
+	t.Parallel()
 	t.Run("checks osxkeychain availability", func(t *testing.T) {
+		t.Parallel()
 		usable := isOSXKeychainUsable()
 		// Result depends on system state, just verify it doesn't panic
 		assert.NotNil(t, usable)
@@ -210,10 +232,12 @@ func TestIsOSXKeychainUsable(t *testing.T) {
 }
 
 func TestGetCredentials_Plaintext(t *testing.T) {
+	t.Parallel()
 	t.Run("returns credentials from plaintext config", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, ".finch", "config.json")
-		err := os.MkdirAll(filepath.Dir(configPath), 0o755)
+		err := os.MkdirAll(filepath.Dir(configPath), 0o750)
 		require.NoError(t, err)
 
 		cfg := configfile.ConfigFile{
@@ -230,8 +254,8 @@ func TestGetCredentials_Plaintext(t *testing.T) {
 		require.NoError(t, err)
 
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tmpDir)
-		defer os.Setenv("HOME", originalHome)
+		_ = os.Setenv("HOME", tmpDir)
+		defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 		creds, err := GetCredentials("registry.example.com")
 		require.NoError(t, err)
@@ -240,11 +264,12 @@ func TestGetCredentials_Plaintext(t *testing.T) {
 	})
 
 	t.Run("returns empty credentials when not found", func(t *testing.T) {
+		t.Parallel()
 		tmpDir := t.TempDir()
-		
+
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tmpDir)
-		defer os.Setenv("HOME", originalHome)
+		_ = os.Setenv("HOME", tmpDir)
+		defer func() { _ = os.Setenv("HOME", originalHome) }()
 
 		creds, err := GetCredentials("registry.example.com")
 		require.NoError(t, err)

@@ -16,7 +16,9 @@ import (
 )
 
 func TestHandleCredentials(t *testing.T) {
+	t.Parallel()
 	t.Run("returns 405 for GET request", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodGet, "/credentials", nil)
 		w := httptest.NewRecorder()
 
@@ -26,6 +28,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns 405 for PUT request", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodPut, "/credentials", nil)
 		w := httptest.NewRecorder()
 
@@ -35,6 +38,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns 400 for invalid JSON", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewBufferString("{invalid"))
 		w := httptest.NewRecorder()
 
@@ -44,6 +48,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns 400 for empty JSON", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewBufferString("{}"))
 		w := httptest.NewRecorder()
 
@@ -53,6 +58,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns 400 for missing serverURL", func(t *testing.T) {
+		t.Parallel()
 		reqBody := CredentialRequest{
 			ServerURL: "",
 			Env:       map[string]string{},
@@ -67,6 +73,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns credentials on success", func(t *testing.T) {
+		t.Parallel()
 		reqBody := CredentialRequest{
 			ServerURL: "registry.example.com",
 			Env:       map[string]string{"TEST": "value"},
@@ -87,6 +94,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns empty credentials on GetCredentials error", func(t *testing.T) {
+		t.Parallel()
 		reqBody := CredentialRequest{
 			ServerURL: "nonexistent.registry.com",
 			Env:       map[string]string{},
@@ -106,6 +114,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("handles environment variables", func(t *testing.T) {
+		t.Parallel()
 		reqBody := CredentialRequest{
 			ServerURL: "registry.example.com",
 			Env: map[string]string{
@@ -123,6 +132,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("handles large, arbitrary environment variable maps", func(t *testing.T) {
+		t.Parallel()
 		envMap := make(map[string]string)
 		for i := 0; i < 100; i++ {
 			envMap[string(rune('A'+i))] = "value"
@@ -142,6 +152,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns 405 for DELETE request", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodDelete, "/credentials", nil)
 		w := httptest.NewRecorder()
 
@@ -151,6 +162,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("returns 405 for PATCH request", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodPatch, "/credentials", nil)
 		w := httptest.NewRecorder()
 
@@ -160,6 +172,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("handles nil Env field", func(t *testing.T) {
+		t.Parallel()
 		reqBody := CredentialRequest{
 			ServerURL: "registry.example.com",
 			Env:       nil,
@@ -174,6 +187,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("handles empty request body", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodPost, "/credentials", bytes.NewBuffer([]byte{}))
 		w := httptest.NewRecorder()
 
@@ -183,6 +197,7 @@ func TestHandleCredentials(t *testing.T) {
 	})
 
 	t.Run("handles concurrent requests", func(t *testing.T) {
+		t.Parallel()
 		const numRequests = 10
 		done := make(chan bool, numRequests)
 
@@ -210,7 +225,9 @@ func TestHandleCredentials(t *testing.T) {
 }
 
 func TestCredentialRequest(t *testing.T) {
+	t.Parallel()
 	t.Run("unmarshals valid request with env vars", func(t *testing.T) {
+		t.Parallel()
 		jsonData := `{"serverURL":"registry.example.com","env":{"KEY":"value"}}`
 		var req CredentialRequest
 		err := json.Unmarshal([]byte(jsonData), &req)
@@ -221,6 +238,7 @@ func TestCredentialRequest(t *testing.T) {
 	})
 
 	t.Run("unmarshals request without env vars", func(t *testing.T) {
+		t.Parallel()
 		jsonData := `{"serverURL":"registry.example.com"}`
 		var req CredentialRequest
 		err := json.Unmarshal([]byte(jsonData), &req)
@@ -231,6 +249,7 @@ func TestCredentialRequest(t *testing.T) {
 	})
 
 	t.Run("handles special characters in serverURL", func(t *testing.T) {
+		t.Parallel()
 		jsonData := `{"serverURL":"registry.example.com:5000/path"}`
 		var req CredentialRequest
 		err := json.Unmarshal([]byte(jsonData), &req)

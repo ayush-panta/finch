@@ -37,7 +37,7 @@ var testFinchConfigFile = func(o *option.Option) {
 			configPath := filepath.Join(finchRootDir, ".finch", "config.json")
 			_ = os.Remove(configPath)
 			// Create empty config to prevent automatic osxkeychain setup
-			err = os.MkdirAll(filepath.Dir(configPath), 0o755)
+			err = os.MkdirAll(filepath.Dir(configPath), 0o750)
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 			err = os.WriteFile(configPath, []byte("{}"), 0o600)
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())

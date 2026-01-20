@@ -69,7 +69,7 @@ func isDaemonRunning(pidFile string) bool {
 
 // stopDaemon attempts to gracefully stop the daemon with SIGTERM, waiting up to 2 seconds before force-killing.
 func stopDaemon(pidFile string) error {
-	defer os.Remove(pidFile)
+	defer func() { _ = os.Remove(pidFile) }()
 
 	process, err := getProcessFromPIDFile(pidFile)
 	if err != nil {
